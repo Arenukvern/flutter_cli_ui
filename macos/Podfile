@@ -1,4 +1,4 @@
-platform :osx, '10.14'
+platform :osx, '11.5'  # Update to a more recent macOS version
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -31,10 +31,13 @@ target 'Runner' do
   use_modular_headers!
 
   flutter_install_all_macos_pods File.dirname(File.realpath(__FILE__))
-  target 'RunnerTests' do
-    inherit! :search_paths
-  end
 end
+
+# Remove the FlutterHelper target if it's not needed
+# target 'FlutterHelper' do
+#   use_frameworks!
+#   use_modular_headers!
+# end
 
 post_install do |installer|
   installer.pods_project.targets.each do |target|

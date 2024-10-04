@@ -13,13 +13,13 @@ class DependenciesView extends StatelessWidget {
   final String? selectedPackage;
 
   /// Callback function to upgrade all dependencies.
-  final VoidCallback onUpgradeAll;
+  final VoidCallback? onUpgradeAll;
 
   /// Callback function to run 'pub get'.
-  final VoidCallback onRunPubGet;
+  final VoidCallback? onRunPubGet;
 
   /// Callback function to upgrade a single dependency.
-  final Function(String, String) onUpgradeDependency;
+  final Function(Dependency) onUpgradeDependency;
 
   /// Whether the dependencies are currently being loaded.
   final bool isLoading;
@@ -28,19 +28,19 @@ class DependenciesView extends StatelessWidget {
   final bool isFetchingLatestVersions;
 
   /// Callback function to upgrade and resolve conflicts.
-  final VoidCallback onUpgradeAndResolveConflicts;
+  final VoidCallback? onUpgradeAndResolveConflicts;
 
   /// Constructs a [DependenciesView] widget.
   const DependenciesView({
     super.key,
     required this.dependencies,
     required this.selectedPackage,
-    required this.onUpgradeAll,
-    required this.onRunPubGet,
-    required this.onUpgradeDependency,
     required this.isLoading,
     required this.isFetchingLatestVersions,
-    required this.onUpgradeAndResolveConflicts,
+    this.onUpgradeAll,
+    required this.onUpgradeDependency,
+    this.onRunPubGet,
+    this.onUpgradeAndResolveConflicts,
   });
 
   /// Sorts the dependencies by outdated status and name.
@@ -173,7 +173,7 @@ class DependenciesView extends StatelessWidget {
           else if (dep.isVersioned)
             IconButton(
               icon: const Icon(Icons.refresh, size: 18),
-              onPressed: () => onUpgradeDependency(dep.name, dep.type),
+              onPressed: () => onUpgradeDependency(dep),
             ),
           if (!dep.isSdk)
             IconButton(

@@ -34,5 +34,7 @@
 		<string>This app needs access to your files.</string>
 		<key>NSFullDiskAccessUsageDescription</key>
 		<string>This app requires full disk access to manage Flutter packages across your system.</string>
+		<key>NSAppleEventsUsageDescription</key>
+		<string>This app needs to control other applications to run Flutter commands.</string>
 	</dict>
 </plist>

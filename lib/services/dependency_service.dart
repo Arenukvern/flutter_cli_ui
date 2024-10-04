@@ -183,10 +183,15 @@ class DependencyService {
     }
   }
 
-  Future<void> upgradeAllDependencies(
-      String selectedDirectory, String packagePath) async {
+  Future<Map<String, dynamic>> upgradeAllDependencies(
+    String selectedDirectory,
+    String packagePath,
+  ) async {
     final fullPath = path.join(selectedDirectory, packagePath);
     final pubspecFile = File(path.join(fullPath, 'pubspec.yaml'));
+    final changes = <String, Map<String, String>>{};
+    final messages = <String>[];
+
     if (await pubspecFile.exists()) {
       final content = await pubspecFile.readAsString();
       final editor = YamlEditor(content);
@@ -196,8 +201,15 @@ class DependencyService {
       for (var dep in dependencies) {
         if (dep.isVersioned && !dep.isSdk) {
           final latestVersion = await getLatestVersion(dep.name, dep.isSdk);
-          if (latestVersion != 'Unknown') {
+          if (latestVersion != 'Unknown' &&
+              latestVersion != dep.currentVersion) {
             editor.update([dep.type, dep.name], '^$latestVersion');
+            changes[dep.name] = {
+              'from': dep.currentVersion,
+              'to': '^$latestVersion'
+            };
+            messages.add(
+                'Upgrading ${dep.name} from ${dep.currentVersion} to ^$latestVersion');
           }
         }
       }
@@ -206,6 +218,11 @@ class DependencyService {
     } else {
       throw Exception('pubspec.yaml not found at path: ${pubspecFile.path}');
     }
+
+    return {
+      'changes': changes,
+      'messages': messages,
+    };
   }
 
   Future<void> runPubGet(String selectedDirectory, String packagePath) async {
@@ -237,19 +254,33 @@ class DependencyService {
     return _parseVersionInfo(value).isVersioned;
   }
 
-  Future<void> upgradeAndResolveConflicts(
-      String selectedDirectory, String packagePath) async {
+  Future<Map<String, dynamic>> upgradeAndResolveConflicts(
+    String selectedDirectory,
+    String packagePath,
+  ) async {
     final fullPath = path.join(selectedDirectory, packagePath);
     final pubspecFile = File(path.join(fullPath, 'pubspec.yaml'));
+    final changes = <String, Map<String, String>>{};
+    final messages = <String>[];
 
     if (await pubspecFile.exists()) {
+      messages.add('Starting upgrade process...');
+
       // Step 1: Upgrade all dependencies to their latest versions
-      await upgradeAllDependencies(selectedDirectory, packagePath);
+      final upgradeResult =
+          await upgradeAllDependencies(selectedDirectory, packagePath);
+      changes
+          .addAll(upgradeResult['changes'] as Map<String, Map<String, String>>);
+      messages.addAll(upgradeResult['messages'] as List<String>);
 
       // Step 2: Try to run pub get
       try {
+        messages.add('Running pub get...');
         await runPubGet(selectedDirectory, packagePath);
+        messages.add('Pub get completed successfully.');
       } catch (e) {
+        messages.add('Pub get failed. Resolving conflicts...');
+
         // Step 3: If pub get fails, parse the error message to identify conflicting packages
         final conflictingPackages = _parseConflictingPackages(e.toString());
 
@@ -260,17 +291,27 @@ class DependencyService {
         for (final package in conflictingPackages) {
           final latestVersion = await getLatestVersion(package, false);
           editor.update(['dependency_overrides', package], '^$latestVersion');
+          changes[package] = {'overridden': '^$latestVersion'};
+          messages.add('Overriding $package with ^$latestVersion');
         }
 
         // Step 5: Write the updated pubspec.yaml
         await pubspecFile.writeAsString(editor.toString());
 
         // Step 6: Try to run pub get again
+        messages.add('Running pub get after resolving conflicts...');
         await runPubGet(selectedDirectory, packagePath);
+        messages
+            .add('Pub get completed successfully after resolving conflicts.');
       }
     } else {
       throw Exception('pubspec.yaml not found at path: ${pubspecFile.path}');
     }
+
+    return {
+      'changes': changes,
+      'messages': messages,
+    };
   }
 
   List<String> _parseConflictingPackages(String errorMessage) {

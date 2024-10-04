@@ -11,40 +11,36 @@ class AppDelegate: FlutterAppDelegate {
     let controller: FlutterViewController =
       mainFlutterWindow?.contentViewController as! FlutterViewController
     let channel = FlutterMethodChannel(
-      name: "com.example.flutter_cli_ui/permissions",
+      name: "com.example.dependency_manager/permissions",
       binaryMessenger: controller.engine.binaryMessenger)
-
-    channel.setMethodCallHandler { [weak self] (call, result) in
-      guard let self = self else { return }
-
-      if call.method == "pickDirectory" {
-        self.pickDirectory(result: result)
+    channel.setMethodCallHandler({
+      (call: FlutterMethodCall, result: @escaping FlutterResult) -> Void in
+      if call.method == "requestElevatedPermissions" {
+        self.requestElevatedPermissions(result: result)
       } else {
         result(FlutterMethodNotImplemented)
       }
-    }
-
-    super.applicationDidFinishLaunching(notification)
+    })
   }
 
-  private func pickDirectory(result: @escaping FlutterResult) {
-    let openPanel = NSOpenPanel()
-    openPanel.canChooseDirectories = true
-    openPanel.canChooseFiles = false
-    openPanel.allowsMultipleSelection = false
-    openPanel.prompt = "Select Folder"
+  private func requestElevatedPermissions(result: @escaping FlutterResult) {
+    let task = Process()
+    task.launchPath = "/usr/bin/osascript"
+    task.arguments = ["-e", "do shell script \"echo success\" with administrator privileges"]
 
-    openPanel.begin { (response) in
-      if response == .OK {
-        if let url = openPanel.url {
-          result(url.path)
-        } else {
-          result(FlutterError(code: "NO_DIRECTORY", message: "No directory selected", details: nil))
-        }
-      } else {
-        result(
-          FlutterError(code: "CANCELLED", message: "Directory selection cancelled", details: nil))
-      }
+    let outputPipe = Pipe()
+    task.standardOutput = outputPipe
+
+    task.launch()
+    task.waitUntilExit()
+
+    let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+    let output = String(data: outputData, encoding: .utf8)
+
+    if output?.trimmingCharacters(in: .whitespacesAndNewlines) == "success" {
+      result(true)
+    } else {
+      result(false)
     }
   }
 }
