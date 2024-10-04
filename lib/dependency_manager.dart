@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'models/dependency.dart';
@@ -23,6 +25,7 @@ class _DependencyManagerState extends State<DependencyManager> {
   bool isFetchingLatestVersions = false;
   double _dividerPosition = 0.5;
   String? _selectedPackage;
+  StreamSubscription<Dependency>? _dependencySubscription;
 
   Future<void> pickDirectory() async {
     final directory = await _fileService.pickDirectory();
@@ -63,53 +66,40 @@ class _DependencyManagerState extends State<DependencyManager> {
     setState(() {
       isLoading = true;
       dependencies = [];
+      isFetchingLatestVersions = true;
     });
 
-    try {
-      final deps = await _dependencyService.fetchDependencies(
-          selectedDirectory!, packagePath);
-
-      final List<Dependency> dependencyList = [];
-      for (final depType in deps.keys) {
-        for (final entry in deps[depType].entries) {
-          dependencyList.add(Dependency(
-            name: entry.key,
-            currentVersion: entry.value.toString(),
-            latestVersion: 'Loading...',
-            type: depType,
-          ));
-        }
-      }
-
-      setState(() {
-        dependencies = dependencyList;
-        isLoading = false;
-        isFetchingLatestVersions = true;
-      });
-
-      // Fetch latest versions
-      final latestVersions = await _dependencyService.fetchLatestVersions(deps);
-
-      setState(() {
-        dependencies = dependencies.map((dep) {
-          return Dependency(
-            name: dep.name,
-            currentVersion: dep.currentVersion,
-            latestVersion: latestVersions[dep.name] ?? 'Unknown',
-            type: dep.type,
-          );
-        }).toList();
-        isFetchingLatestVersions = false;
-      });
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching dependencies: ${e.toString()}')),
-      );
-      setState(() {
-        isLoading = false;
-        isFetchingLatestVersions = false;
-      });
-    }
+    _dependencySubscription?.cancel();
+    _dependencySubscription = _dependencyService
+        .fetchDependenciesStream(selectedDirectory!, packagePath)
+        .listen(
+      (dependency) {
+        setState(() {
+          final index =
+              dependencies.indexWhere((d) => d.name == dependency.name);
+          if (index != -1) {
+            dependencies[index] = dependency;
+          } else {
+            dependencies.add(dependency);
+          }
+        });
+      },
+      onDone: () {
+        setState(() {
+          isLoading = false;
+          isFetchingLatestVersions = false;
+        });
+      },
+      onError: (error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error fetching dependencies: $error')),
+        );
+        setState(() {
+          isLoading = false;
+          isFetchingLatestVersions = false;
+        });
+      },
+    );
   }
 
   Future<void> upgradeDependency(
@@ -156,6 +146,12 @@ class _DependencyManagerState extends State<DependencyManager> {
         SnackBar(content: Text('Error running pub get: ${e.toString()}')),
       );
     }
+  }
+
+  @override
+  void dispose() {
+    _dependencySubscription?.cancel();
+    super.dispose();
   }
 
   @override

@@ -1,11 +1,18 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+
+import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+
+import '../models/dependency.dart';
+import 'package_cache_service.dart';
 
 class DependencyService {
+  final PackageCacheService _cacheService = PackageCacheService();
+
   Future<Map<String, dynamic>> fetchDependencies(
       String selectedDirectory, String packagePath) async {
     final fullPath = path.join(selectedDirectory, packagePath);
@@ -24,23 +31,19 @@ class DependencyService {
     }
   }
 
-  Future<Map<String, String>> fetchLatestVersions(
-      Map<String, dynamic> dependencies) async {
-    Map<String, String> latestVersions = {};
-    for (var depType in dependencies.keys) {
-      for (var dep in dependencies[depType].keys) {
-        latestVersions[dep] = await getLatestVersion(dep);
-      }
-    }
-    return latestVersions;
-  }
-
   Future<String> getLatestVersion(String packageName) async {
+    final cachedVersion = await _cacheService.getCachedVersion(packageName);
+    if (cachedVersion != null) {
+      return cachedVersion;
+    }
+
     final response =
         await http.get(Uri.parse('https://pub.dev/api/packages/$packageName'));
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      return data['latest']['version'];
+      final latestVersion = data['latest']['version'];
+      await _cacheService.cacheVersion(packageName, latestVersion);
+      return latestVersion;
     }
     return 'Unknown';
   }
@@ -102,6 +105,28 @@ class DependencyService {
 
     if (result.exitCode != 0) {
       throw Exception(result.stderr);
+    }
+  }
+
+  Stream<Dependency> fetchDependenciesStream(
+      String selectedDirectory, String packagePath) async* {
+    final deps = await fetchDependencies(selectedDirectory, packagePath);
+    for (final depType in deps.keys) {
+      for (final entry in deps[depType].entries) {
+        yield Dependency(
+          name: entry.key,
+          currentVersion: entry.value.toString(),
+          latestVersion: 'Loading...',
+          type: depType,
+        );
+        final latestVersion = await getLatestVersion(entry.key);
+        yield Dependency(
+          name: entry.key,
+          currentVersion: entry.value.toString(),
+          latestVersion: latestVersion,
+          type: depType,
+        );
+      }
     }
   }
 }
