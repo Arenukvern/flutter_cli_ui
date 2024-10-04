@@ -66,40 +66,54 @@ class _DependencyManagerState extends State<DependencyManager> {
     setState(() {
       isLoading = true;
       dependencies = [];
-      isFetchingLatestVersions = true;
     });
 
-    _dependencySubscription?.cancel();
-    _dependencySubscription = _dependencyService
-        .fetchDependenciesStream(selectedDirectory!, packagePath)
-        .listen(
-      (dependency) {
-        setState(() {
-          final index =
-              dependencies.indexWhere((d) => d.name == dependency.name);
-          if (index != -1) {
-            dependencies[index] = dependency;
-          } else {
-            dependencies.add(dependency);
-          }
-        });
-      },
-      onDone: () {
-        setState(() {
-          isLoading = false;
-          isFetchingLatestVersions = false;
-        });
-      },
-      onError: (error) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error fetching dependencies: $error')),
-        );
-        setState(() {
-          isLoading = false;
-          isFetchingLatestVersions = false;
-        });
-      },
-    );
+    try {
+      // Fetch local dependencies
+      final localDeps = await _dependencyService.fetchLocalDependencies(
+          selectedDirectory!, packagePath);
+      setState(() {
+        dependencies = localDeps;
+        isLoading = false;
+        isFetchingLatestVersions = true;
+      });
+
+      // Fetch latest versions
+      _dependencySubscription?.cancel();
+      _dependencySubscription =
+          _dependencyService.fetchLatestVersions(localDeps).listen(
+        (updatedDep) {
+          setState(() {
+            final index =
+                dependencies.indexWhere((d) => d.name == updatedDep.name);
+            if (index != -1) {
+              dependencies[index] = updatedDep;
+            }
+          });
+        },
+        onDone: () {
+          setState(() {
+            isFetchingLatestVersions = false;
+          });
+        },
+        onError: (error) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error fetching latest versions: $error')),
+          );
+          setState(() {
+            isFetchingLatestVersions = false;
+          });
+        },
+      );
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching dependencies: $error')),
+      );
+      setState(() {
+        isLoading = false;
+        isFetchingLatestVersions = false;
+      });
+    }
   }
 
   Future<void> upgradeDependency(

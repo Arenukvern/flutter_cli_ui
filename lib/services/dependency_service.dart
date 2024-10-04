@@ -13,7 +13,7 @@ import 'package_cache_service.dart';
 class DependencyService {
   final PackageCacheService _cacheService = PackageCacheService();
 
-  Future<Map<String, dynamic>> fetchDependencies(
+  Future<List<Dependency>> fetchLocalDependencies(
       String selectedDirectory, String packagePath) async {
     final fullPath = path.join(selectedDirectory, packagePath);
     final pubspecFile = File(path.join(fullPath, 'pubspec.yaml'));
@@ -21,13 +21,36 @@ class DependencyService {
     if (await pubspecFile.exists()) {
       final content = await pubspecFile.readAsString();
       final yamlMap = loadYaml(content);
-      return {
-        'dependencies': yamlMap['dependencies'] ?? {},
-        'dev_dependencies': yamlMap['dev_dependencies'] ?? {},
-        'dependency_overrides': yamlMap['dependency_overrides'] ?? {},
-      };
+      final dependencies = <Dependency>[];
+
+      void addDependencies(String type, Map<dynamic, dynamic> deps) {
+        deps.forEach((key, value) {
+          dependencies.add(Dependency(
+            name: key.toString(),
+            currentVersion: value is String
+                ? value
+                : value['version']?.toString() ?? 'Unknown',
+            latestVersion: 'Loading...',
+            type: type,
+          ));
+        });
+      }
+
+      addDependencies('dependencies', yamlMap['dependencies'] ?? {});
+      addDependencies('dev_dependencies', yamlMap['dev_dependencies'] ?? {});
+      addDependencies(
+          'dependency_overrides', yamlMap['dependency_overrides'] ?? {});
+
+      return dependencies;
     } else {
       throw Exception('pubspec.yaml not found at path: ${pubspecFile.path}');
+    }
+  }
+
+  Stream<Dependency> fetchLatestVersions(List<Dependency> dependencies) async* {
+    for (final dep in dependencies) {
+      final latestVersion = await getLatestVersion(dep.name);
+      yield dep.copyWith(latestVersion: latestVersion);
     }
   }
 
@@ -37,13 +60,17 @@ class DependencyService {
       return cachedVersion;
     }
 
-    final response =
-        await http.get(Uri.parse('https://pub.dev/api/packages/$packageName'));
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final latestVersion = data['latest']['version'];
-      await _cacheService.cacheVersion(packageName, latestVersion);
-      return latestVersion;
+    try {
+      final response = await http
+          .get(Uri.parse('https://pub.dev/api/packages/$packageName'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final latestVersion = data['latest']['version'];
+        await _cacheService.cacheVersion(packageName, latestVersion);
+        return latestVersion;
+      }
+    } catch (e) {
+      print('Error fetching latest version for $packageName: $e');
     }
     return 'Unknown';
   }
@@ -78,23 +105,17 @@ class DependencyService {
       final editor = YamlEditor(content);
 
       final dependencies =
-          await fetchDependencies(selectedDirectory, packagePath);
-      for (var dependencyType in [
-        'dependencies',
-        'dev_dependencies',
-        'dependency_overrides'
-      ]) {
-        if (dependencies[dependencyType] != null) {
-          for (var packageName in dependencies[dependencyType].keys) {
-            final latestVersion = await getLatestVersion(packageName);
-            if (latestVersion != 'Unknown') {
-              editor.update([dependencyType, packageName], '^$latestVersion');
-            }
-          }
+          await fetchLocalDependencies(selectedDirectory, packagePath);
+      for (var dep in dependencies) {
+        final latestVersion = await getLatestVersion(dep.name);
+        if (latestVersion != 'Unknown') {
+          editor.update([dep.type, dep.name], '^$latestVersion');
         }
       }
 
       await pubspecFile.writeAsString(editor.toString());
+    } else {
+      throw Exception('pubspec.yaml not found at path: ${pubspecFile.path}');
     }
   }
 
@@ -105,28 +126,6 @@ class DependencyService {
 
     if (result.exitCode != 0) {
       throw Exception(result.stderr);
-    }
-  }
-
-  Stream<Dependency> fetchDependenciesStream(
-      String selectedDirectory, String packagePath) async* {
-    final deps = await fetchDependencies(selectedDirectory, packagePath);
-    for (final depType in deps.keys) {
-      for (final entry in deps[depType].entries) {
-        yield Dependency(
-          name: entry.key,
-          currentVersion: entry.value.toString(),
-          latestVersion: 'Loading...',
-          type: depType,
-        );
-        final latestVersion = await getLatestVersion(entry.key);
-        yield Dependency(
-          name: entry.key,
-          currentVersion: entry.value.toString(),
-          latestVersion: latestVersion,
-          type: depType,
-        );
-      }
     }
   }
 }

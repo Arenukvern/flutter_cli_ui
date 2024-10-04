@@ -34,4 +34,19 @@ class Dependency {
       return false;
     }
   }
+
+  /// Creates a copy of this dependency with the specified properties.
+  Dependency copyWith({
+    String? name,
+    String? currentVersion,
+    String? latestVersion,
+    String? type,
+  }) {
+    return Dependency(
+      name: name ?? this.name,
+      currentVersion: currentVersion ?? this.currentVersion,
+      latestVersion: latestVersion ?? this.latestVersion,
+      type: type ?? this.type,
+    );
+  }
 }
