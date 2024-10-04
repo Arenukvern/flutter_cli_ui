@@ -236,6 +236,51 @@ class DependencyService {
   bool _isVersionedDependency(dynamic value) {
     return _parseVersionInfo(value).isVersioned;
   }
+
+  Future<void> upgradeAndResolveConflicts(
+      String selectedDirectory, String packagePath) async {
+    final fullPath = path.join(selectedDirectory, packagePath);
+    final pubspecFile = File(path.join(fullPath, 'pubspec.yaml'));
+
+    if (await pubspecFile.exists()) {
+      // Step 1: Upgrade all dependencies to their latest versions
+      await upgradeAllDependencies(selectedDirectory, packagePath);
+
+      // Step 2: Try to run pub get
+      try {
+        await runPubGet(selectedDirectory, packagePath);
+      } catch (e) {
+        // Step 3: If pub get fails, parse the error message to identify conflicting packages
+        final conflictingPackages = _parseConflictingPackages(e.toString());
+
+        // Step 4: For each conflicting package, add it to dependency_overrides with a higher constraint
+        final content = await pubspecFile.readAsString();
+        final editor = YamlEditor(content);
+
+        for (final package in conflictingPackages) {
+          final latestVersion = await getLatestVersion(package, false);
+          editor.update(['dependency_overrides', package], '^$latestVersion');
+        }
+
+        // Step 5: Write the updated pubspec.yaml
+        await pubspecFile.writeAsString(editor.toString());
+
+        // Step 6: Try to run pub get again
+        await runPubGet(selectedDirectory, packagePath);
+      }
+    } else {
+      throw Exception('pubspec.yaml not found at path: ${pubspecFile.path}');
+    }
+  }
+
+  List<String> _parseConflictingPackages(String errorMessage) {
+    // This is a simple implementation. You might need to adjust it based on the actual error message format.
+    final regex = RegExp(r'Because (\w+) [^,]*, (\w+) ');
+    final matches = regex.allMatches(errorMessage);
+    final conflictingPackages =
+        matches.expand((m) => [m.group(1), m.group(2)]).toSet().toList();
+    return conflictingPackages.where((p) => p != null).cast<String>().toList();
+  }
 }
 
 class _VersionInfo {

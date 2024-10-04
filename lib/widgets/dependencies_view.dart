@@ -27,6 +27,9 @@ class DependenciesView extends StatelessWidget {
   /// Whether the latest versions are currently being fetched.
   final bool isFetchingLatestVersions;
 
+  /// Callback function to upgrade and resolve conflicts.
+  final VoidCallback onUpgradeAndResolveConflicts;
+
   /// Constructs a [DependenciesView] widget.
   const DependenciesView({
     super.key,
@@ -37,6 +40,7 @@ class DependenciesView extends StatelessWidget {
     required this.onUpgradeDependency,
     required this.isLoading,
     required this.isFetchingLatestVersions,
+    required this.onUpgradeAndResolveConflicts,
   });
 
   /// Sorts the dependencies by outdated status and name.
@@ -85,6 +89,10 @@ class DependenciesView extends StatelessWidget {
                   ElevatedButton(
                     onPressed: onRunPubGet,
                     child: const Text('Run pub get'),
+                  ),
+                  ElevatedButton(
+                    onPressed: onUpgradeAndResolveConflicts,
+                    child: const Text('Upgrade and Resolve Conflicts'),
                   ),
                 ],
               ),

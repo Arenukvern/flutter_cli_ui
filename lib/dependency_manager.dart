@@ -162,6 +162,28 @@ class _DependencyManagerState extends State<DependencyManager> {
     }
   }
 
+  Future<void> upgradeAndResolveConflicts(String packagePath) async {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      await _dependencyService.upgradeAndResolveConflicts(
+          selectedDirectory!, packagePath);
+      await fetchDependencies(packagePath);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(
+                'Error upgrading and resolving conflicts: ${e.toString()}')),
+      );
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
   @override
   void dispose() {
     _dependencySubscription?.cancel();
@@ -247,6 +269,8 @@ class _DependencyManagerState extends State<DependencyManager> {
                     onRunPubGet: () => runPubGet(_selectedPackage!),
                     onUpgradeDependency: (dep, depType) =>
                         upgradeDependency(_selectedPackage!, dep, depType),
+                    onUpgradeAndResolveConflicts: () =>
+                        upgradeAndResolveConflicts(_selectedPackage!),
                     isLoading: isLoading,
                     isFetchingLatestVersions: isFetchingLatestVersions,
                   ),
