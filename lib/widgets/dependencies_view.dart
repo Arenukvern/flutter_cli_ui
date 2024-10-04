@@ -50,75 +50,94 @@ class DependenciesView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.all(8),
-      child: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : dependencies.isNotEmpty
-              ? ListView(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          ElevatedButton(
-                            onPressed:
-                                selectedPackage != null ? onUpgradeAll : null,
-                            child: const Text('Upgrade All Dependencies'),
-                          ),
-                          ElevatedButton(
-                            onPressed:
-                                selectedPackage != null ? onRunPubGet : null,
-                            child: const Text('Run pub get'),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (isFetchingLatestVersions)
-                      const Padding(
-                        padding: EdgeInsets.all(8.0),
-                        child: Text('Fetching latest versions...'),
-                      ),
-                    ..._buildDependencyLists(),
-                  ],
-                )
-              : const Center(
-                  child: Text('Select a package to view dependencies')),
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (dependencies.isEmpty) {
+      return const Center(child: Text('No dependencies found.'));
+    }
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Dependencies for $selectedPackage',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              Row(
+                children: [
+                  ElevatedButton(
+                    onPressed: onUpgradeAll,
+                    child: const Text('Upgrade All'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: onRunPubGet,
+                    child: const Text('Run pub get'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView(
+            children: [
+              _buildSdkSection(),
+              _buildDependencySection('dependencies'),
+              _buildDependencySection('dev_dependencies'),
+              _buildDependencySection('dependency_overrides'),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
-  /// Builds the list of dependencies grouped by type.
-  List<Widget> _buildDependencyLists() {
-    final groupedDependencies = <String, List<Dependency>>{};
-    for (final dep in dependencies) {
-      groupedDependencies.putIfAbsent(dep.type, () => []).add(dep);
-    }
+  Widget _buildSdkSection() {
+    final sdkDependencies = dependencies.where((dep) => dep.isSdk).toList();
+    if (sdkDependencies.isEmpty) return const SizedBox.shrink();
 
-    return groupedDependencies.entries.map((entry) {
-      final depType = entry.key;
-      final deps = entry.value;
-      if (deps.isEmpty) return Container();
-
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Text(
-              '$depType:',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.all(8.0),
+          child: Text(
+            'SDK Versions:',
+            style: TextStyle(fontWeight: FontWeight.bold),
           ),
-          ..._sortDependencies()
-              .where((dep) => dep.type == depType)
-              .map(_buildDependencyTile),
-        ],
-      );
-    }).toList();
+        ),
+        ...sdkDependencies.map(_buildDependencyTile),
+      ],
+    );
   }
 
-  /// Builds a [ListTile] for a single dependency.
+  Widget _buildDependencySection(String depType) {
+    final deps =
+        dependencies.where((dep) => dep.type == depType && !dep.isSdk).toList();
+    if (deps.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Text(
+            '$depType:',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+        ...deps.map(_buildDependencyTile),
+      ],
+    );
+  }
+
   Widget _buildDependencyTile(Dependency dep) {
     return ListTile(
       title: Text(dep.name),
@@ -138,17 +157,18 @@ class DependenciesView extends StatelessWidget {
               height: 20,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          else
+          else if (dep.isVersioned)
             IconButton(
               icon: const Icon(Icons.refresh),
               onPressed: () => onUpgradeDependency(dep.name, dep.type),
             ),
-          IconButton(
-            icon: const Icon(Icons.open_in_new),
-            onPressed: () {
-              launchUrl(Uri.parse('https://pub.dev/packages/${dep.name}'));
-            },
-          ),
+          if (!dep.isSdk)
+            IconButton(
+              icon: const Icon(Icons.open_in_new),
+              onPressed: () {
+                launchUrl(Uri.parse('https://pub.dev/packages/${dep.name}'));
+              },
+            ),
         ],
       ),
     );

@@ -14,23 +14,30 @@ class Dependency {
   /// The type of dependency (e.g., 'dependencies', 'dev_dependencies', 'dependency_overrides').
   final String type;
 
+  /// Whether the dependency is versioned or not.
+  final bool isVersioned;
+
+  /// Whether the dependency is an SDK or not.
+  final bool isSdk;
+
   /// Constructs a [Dependency] instance.
   const Dependency({
     required this.name,
     required this.currentVersion,
     required this.latestVersion,
     required this.type,
+    required this.isVersioned,
+    this.isSdk = false,
   });
 
   /// Checks if the dependency is outdated.
   bool get isOutdated {
+    if (!isVersioned || latestVersion == 'Unknown') return false;
     try {
-      final current = Version.parse(currentVersion.replaceAll('^', ''));
+      final current = VersionConstraint.parse(currentVersion);
       final latest = Version.parse(latestVersion);
-      return latest > current;
+      return !current.allows(latest);
     } catch (e) {
-      // If we can't parse the versions, we'll assume it's not outdated
-      // This can happen with git dependencies or other non-standard version strings
       return false;
     }
   }
@@ -41,12 +48,16 @@ class Dependency {
     String? currentVersion,
     String? latestVersion,
     String? type,
+    bool? isVersioned,
+    bool? isSdk,
   }) {
     return Dependency(
       name: name ?? this.name,
       currentVersion: currentVersion ?? this.currentVersion,
       latestVersion: latestVersion ?? this.latestVersion,
       type: type ?? this.type,
+      isVersioned: isVersioned ?? this.isVersioned,
+      isSdk: isSdk ?? this.isSdk,
     );
   }
 }
