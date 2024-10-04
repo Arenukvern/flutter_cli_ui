@@ -194,7 +194,7 @@ class DependencyService {
       final dependencies =
           await fetchLocalDependencies(selectedDirectory, packagePath);
       for (var dep in dependencies) {
-        if (dep.isVersioned) {
+        if (dep.isVersioned && !dep.isSdk) {
           final latestVersion = await getLatestVersion(dep.name, dep.isSdk);
           if (latestVersion != 'Unknown') {
             editor.update([dep.type, dep.name], '^$latestVersion');

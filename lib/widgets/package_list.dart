@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'ui_list_tile.dart';
+
 class PackageList extends StatelessWidget {
   final List<String> packages;
   final bool isLoading;
@@ -27,10 +29,10 @@ class PackageList extends StatelessWidget {
                   itemCount: packages.length,
                   itemBuilder: (context, index) {
                     final package = packages[index];
-                    return ListTile(
+                    return UiListTile(
                       key: ValueKey(package),
-                      title: Text(package),
-                      selected: package == selectedPackage,
+                      title: package,
+                      isSelected: package == selectedPackage,
                       onTap: () => onPackageSelected(package),
                     );
                   },
