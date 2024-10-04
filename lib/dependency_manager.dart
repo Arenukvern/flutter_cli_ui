@@ -30,10 +30,13 @@ class _DependencyManagerState extends State<DependencyManager> {
   double _dividerPosition = 0.5;
   String? _selectedPackage;
   StreamSubscription<Dependency>? _dependencySubscription;
-  final MethodChannel _channel =
-      const MethodChannel('com.example.dependency_manager/permissions');
-  bool _hasElevatedPermissions = false;
+  static const MethodChannel _channel = MethodChannel(
+    'com.example.flutter_cli_ui/permissions',
+  );
+  final bool _hasElevatedPermissions = false;
   String? _helperPath;
+  static const MethodChannel _flutterHelperChannel =
+      MethodChannel('com.example.flutter_cli_ui/flutter_helper');
 
   Future<void> pickDirectory() async {
     final directory = await _fileService.pickDirectory();
@@ -127,16 +130,39 @@ class _DependencyManagerState extends State<DependencyManager> {
   Future<void> upgradeDependency(
       String packagePath, String packageName, String dependencyType) async {
     try {
-      await _dependencyService.upgradeDependency(
-          selectedDirectory!, packagePath, packageName, dependencyType);
-      await fetchDependencies(packagePath);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Successfully upgraded $packageName')),
-      );
+      print(
+          'Calling runPubUpgrade with packagePath: $packagePath, dependency: $packageName');
+      final result = await _flutterHelperChannel.invokeMethod('runPubUpgrade', {
+        'packagePath': packagePath,
+        'dependency': packageName,
+      });
+
+      print('Result from runPubUpgrade: $result');
+
+      if (result is Map<String, dynamic>) {
+        final output = result['output'] as String?;
+        final exitCode = result['exitCode'] as int?;
+
+        if (exitCode == 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Dependency upgraded successfully')),
+          );
+          await fetchDependencies(packagePath);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text(
+                    'Upgrade failed. Exit code: $exitCode\nOutput: $output')),
+          );
+        }
+      } else {
+        throw Exception(
+            'Unexpected result type from native code: ${result.runtimeType}');
+      }
     } catch (e) {
+      print('Error upgrading dependency: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('Error upgrading $packageName: ${e.toString()}')),
+        SnackBar(content: Text('Error upgrading dependency: $e')),
       );
     }
   }
@@ -158,39 +184,38 @@ class _DependencyManagerState extends State<DependencyManager> {
   }
 
   Future<void> runPubGet(String packagePath) async {
-    if (_helperPath == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Helper tool not initialized')),
-      );
-      return;
-    }
-
-    setState(() {
-      isLoading = true;
-    });
-
     try {
-      final result = await Process.run(
-        _helperPath!,
-        ['pub', 'get'],
-        workingDirectory: '$selectedDirectory/$packagePath',
-      );
+      print('Calling runPubGet with packagePath: $packagePath');
+      final result = await _flutterHelperChannel.invokeMethod('runPubGet', {
+        'packagePath': packagePath,
+      });
 
-      if (result.exitCode == 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Successfully ran pub get')),
-        );
+      print('Result from runPubGet: $result');
+
+      if (result is Map<String, dynamic>) {
+        final output = result['output'] as String?;
+        final exitCode = result['exitCode'] as int?;
+
+        if (exitCode == 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Pub get completed successfully')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text(
+                    'Pub get failed. Exit code: $exitCode\nOutput: $output')),
+          );
+        }
       } else {
-        throw Exception(result.stderr);
+        throw Exception(
+            'Unexpected result type from native code: ${result.runtimeType}');
       }
     } catch (e) {
+      print('Error running pub get: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error running pub get: ${e.toString()}')),
+        SnackBar(content: Text('Error running pub get: $e')),
       );
-    } finally {
-      setState(() {
-        isLoading = false;
-      });
     }
   }
 
@@ -240,20 +265,8 @@ class _DependencyManagerState extends State<DependencyManager> {
   @override
   void initState() {
     super.initState();
-    _requestElevatedPermissions();
     _initializeHelperPath();
-  }
-
-  Future<void> _requestElevatedPermissions() async {
-    try {
-      final bool result =
-          await _channel.invokeMethod('requestElevatedPermissions');
-      setState(() {
-        _hasElevatedPermissions = result;
-      });
-    } on PlatformException catch (e) {
-      print("Failed to get permissions: '${e.message}'.");
-    }
+    _initializeFlutterHelper();
   }
 
   Future<void> _initializeHelperPath() async {
@@ -277,6 +290,16 @@ class _DependencyManagerState extends State<DependencyManager> {
     await file.create(recursive: true);
     await file.writeAsBytes(bytes);
     await Process.run('chmod', ['+x', _helperPath!]);
+  }
+
+  Future<void> _initializeFlutterHelper() async {
+    try {
+      final bool result =
+          await _flutterHelperChannel.invokeMethod('initializeFlutterHelper');
+      print('FlutterHelper initialized: $result');
+    } on PlatformException catch (e) {
+      print('Failed to initialize FlutterHelper: ${e.message}');
+    }
   }
 
   @override
