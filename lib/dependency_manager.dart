@@ -1,8 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
 import 'models/dependency.dart';
 import 'services/dependency_service.dart';
@@ -28,16 +26,16 @@ class _DependencyManagerState extends State<DependencyManager> {
   double _dividerPosition = 0.5;
   String? _selectedPackage;
   StreamSubscription<Dependency>? _dependencySubscription;
-  final TextEditingController _conflictController = TextEditingController();
 
   Future<void> pickDirectory() async {
     final directory = await _fileService.pickDirectory();
     if (directory != null) {
       setState(() {
         selectedDirectory = directory;
-        _dependencyService.selectedDirectory = directory; // Add this line
+        _dependencyService.selectedDirectory = directory;
         flutterPackages = [];
         dependencies = [];
+        _selectedPackage = null;
       });
       await scanPackages();
     }
@@ -73,7 +71,6 @@ class _DependencyManagerState extends State<DependencyManager> {
     });
 
     try {
-      // Fetch local dependencies
       final localDeps = await _dependencyService.fetchLocalDependencies(
           selectedDirectory!, packagePath);
       setState(() {
@@ -82,7 +79,6 @@ class _DependencyManagerState extends State<DependencyManager> {
         isFetchingLatestVersions = true;
       });
 
-      // Fetch latest versions
       _dependencySubscription?.cancel();
       _dependencySubscription =
           _dependencyService.fetchLatestVersions(localDeps).listen(
@@ -121,11 +117,18 @@ class _DependencyManagerState extends State<DependencyManager> {
   }
 
   Future<void> upgradeDependency(
-      String packagePath, String packageName, String dependencyType) async {
+      String packageName, String dependencyType) async {
+    if (_selectedPackage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a package first')),
+      );
+      return;
+    }
+
     try {
       await _dependencyService.upgradeDependency(
-          selectedDirectory!, packagePath, packageName, dependencyType);
-      await fetchDependencies(packagePath);
+          selectedDirectory!, _selectedPackage!, packageName, dependencyType);
+      await fetchDependencies(_selectedPackage!);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Successfully upgraded $packageName')),
       );
@@ -166,6 +169,28 @@ class _DependencyManagerState extends State<DependencyManager> {
     }
   }
 
+  Future<void> _resolveConflicts(String conflictMessage) async {
+    if (_selectedPackage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a package first')),
+      );
+      return;
+    }
+
+    try {
+      await _dependencyService.resolveConflicts(
+          _selectedPackage!, conflictMessage);
+      await fetchDependencies(_selectedPackage!);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Conflicts resolved successfully')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error resolving conflicts: ${e.toString()}')),
+      );
+    }
+  }
+
   @override
   void dispose() {
     _dependencySubscription?.cancel();
@@ -181,7 +206,7 @@ class _DependencyManagerState extends State<DependencyManager> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(8.0),
             child: Row(
               children: [
                 ElevatedButton(
@@ -246,13 +271,17 @@ class _DependencyManagerState extends State<DependencyManager> {
                   child: DependenciesView(
                     dependencies: dependencies,
                     selectedPackage: _selectedPackage,
-                    onUpgradeAll: () =>
-                        upgradeAllDependencies(_selectedPackage!),
-                    onRunPubGet: () => runPubGet(_selectedPackage!),
-                    onUpgradeDependency: (dep, depType) =>
-                        upgradeDependency(_selectedPackage!, dep, depType),
+                    onUpgradeAll: () => _selectedPackage != null
+                        ? upgradeAllDependencies(_selectedPackage!)
+                        : null,
+                    onRunPubGet: () => _selectedPackage != null
+                        ? runPubGet(_selectedPackage!)
+                        : null,
+                    onUpgradeDependency: upgradeDependency,
                     isLoading: isLoading,
                     isFetchingLatestVersions: isFetchingLatestVersions,
+                    onResolveConflicts: _resolveConflicts,
+                    dependencyService: _dependencyService,
                   ),
                 ),
               ],
@@ -260,130 +289,7 @@ class _DependencyManagerState extends State<DependencyManager> {
           ),
         ],
       ),
-      floatingActionButton: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton(
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (BuildContext context) {
-                  return AlertDialog(
-                    title: const Text('How to Resolve Conflicts'),
-                    content: const Text(
-                        '1. Run "flutter pub get" in your terminal.\n'
-                        '2. If there are conflicts, copy the error message.\n'
-                        '3. Click the "Resolve Conflicts" button and paste the message.\n'
-                        '4. Click "Resolve" to automatically update your pubspec.yaml.\n'
-                        '5. Run "flutter pub get" again to apply the changes.'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Got it'),
-                      ),
-                    ],
-                  );
-                },
-              );
-            },
-            heroTag: null,
-            child: const Icon(Icons.help_outline),
-          ),
-          const SizedBox(width: 10),
-          FloatingActionButton(
-            onPressed: _showConflictDialog,
-            tooltip: 'Resolve Conflicts',
-            heroTag: null,
-            child: const Icon(Icons.warning_amber_rounded),
-          ),
-        ],
-      ),
     );
-  }
-
-  void _showConflictDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Resolve Conflicts'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Paste the conflict message from pub get:'),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _conflictController,
-                maxLines: 5,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: _resolveConflicts,
-              child: const Text('Resolve'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _resolveConflicts() async {
-    if (_selectedPackage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a package first')),
-      );
-      return;
-    }
-
-    final conflictMessage = _conflictController.text;
-    if (conflictMessage.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a conflict message')),
-      );
-      return;
-    }
-
-    try {
-      await _dependencyService.resolveConflicts(
-          _selectedPackage!, conflictMessage);
-      Navigator.pop(context);
-
-      // Show an animated success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Conflicts resolved. Please run pub get again.')
-              .animate()
-              .fadeIn(duration: 300.ms),
-          action: SnackBarAction(
-            label: 'Copy pubspec.yaml',
-            onPressed: () async {
-              final pubspecContent =
-                  await _dependencyService.getPubspecContent(_selectedPackage!);
-              await Clipboard.setData(ClipboardData(text: pubspecContent));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('pubspec.yaml copied to clipboard')),
-              );
-            },
-          ),
-        ),
-      );
-
-      await fetchDependencies(_selectedPackage!);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error resolving conflicts: ${e.toString()}')),
-      );
-    }
   }
 }
 

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/dependency.dart';
+import '../services/dependency_service.dart';
 import 'ui_list_tile.dart';
 
 /// A widget that displays a list of dependencies for a Flutter package.
@@ -27,7 +30,12 @@ class DependenciesView extends StatelessWidget {
   /// Whether the latest versions are currently being fetched.
   final bool isFetchingLatestVersions;
 
-  /// Constructs a [DependenciesView] widget.
+  /// Callback function to resolve conflicts.
+  final Future<void> Function(String) onResolveConflicts;
+
+  /// The DependencyService instance.
+  final DependencyService dependencyService;
+
   const DependenciesView({
     super.key,
     required this.dependencies,
@@ -37,6 +45,8 @@ class DependenciesView extends StatelessWidget {
     required this.onUpgradeDependency,
     required this.isLoading,
     required this.isFetchingLatestVersions,
+    required this.onResolveConflicts,
+    required this.dependencyService,
   });
 
   /// Sorts the dependencies by outdated status and name.
@@ -85,6 +95,11 @@ class DependenciesView extends StatelessWidget {
                   ElevatedButton(
                     onPressed: onRunPubGet,
                     child: const Text('Run pub get'),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton(
+                    onPressed: () => _showConflictDialog(context),
+                    child: const Text('Resolve Conflicts'),
                   ),
                 ],
               ),
@@ -177,5 +192,123 @@ class DependenciesView extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _showConflictDialog(BuildContext context) async {
+    final TextEditingController conflictController = TextEditingController();
+    bool showHelp = false;
+
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Resolve Conflicts'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Paste the conflict message from pub get:'),
+                      IconButton(
+                        icon: Icon(showHelp ? Icons.help : Icons.help_outline),
+                        onPressed: () {
+                          setState(() {
+                            showHelp = !showHelp;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  if (showHelp)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.0),
+                      child: Text(
+                        '1. Run "flutter pub get" in your terminal.\n'
+                        '2. If there are conflicts, copy the error message.\n'
+                        '3. Paste the message in the text field below.\n'
+                        '4. Click "Resolve" to automatically update your pubspec.yaml.\n'
+                        '5. Run "flutter pub get" again to apply the changes.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: conflictController,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _resolveConflicts(context, conflictController.text);
+                  },
+                  child: const Text('Resolve'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    conflictController.dispose();
+  }
+
+  Future<void> _resolveConflicts(
+      BuildContext context, String conflictMessage) async {
+    if (selectedPackage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a package first')),
+      );
+      return;
+    }
+
+    if (conflictMessage.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a conflict message')),
+      );
+      return;
+    }
+
+    try {
+      await onResolveConflicts(conflictMessage);
+
+      // Show an animated success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Conflicts resolved. Please run pub get again.')
+              .animate()
+              .fadeIn(duration: 300.ms),
+          action: SnackBarAction(
+            label: 'Copy pubspec.yaml',
+            onPressed: () async {
+              final pubspecContent =
+                  await dependencyService.getPubspecContent(selectedPackage!);
+              await Clipboard.setData(ClipboardData(text: pubspecContent));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text('pubspec.yaml copied to clipboard')),
+              );
+            },
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error resolving conflicts: ${e.toString()}')),
+      );
+    }
   }
 }

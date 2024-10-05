@@ -44,6 +44,7 @@ dependencies:
   pub_semver: ^2.1.4
   shared_preferences: ^2.3.2
   flutter_animate: ^4.5.0
+  flutter_hooks: ^0.20.5
 
 dev_dependencies:
   flutter_test:
