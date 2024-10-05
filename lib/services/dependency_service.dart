@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
+import 'package:uuid/uuid.dart';
 import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
@@ -12,9 +13,10 @@ import 'package_cache_service.dart';
 
 class DependencyService {
   final PackageCacheService _cacheService = PackageCacheService();
-  String? selectedDirectory; // Add this line to store the selected directory
+  String? selectedDirectory;
+  final _uuid = const Uuid();
 
-  Future<List<Dependency>> fetchLocalDependencies(
+  Future<Map<String, Map<String, Dependency>>> fetchLocalDependencies(
       String selectedDirectory, String packagePath) async {
     final fullPath = path.join(selectedDirectory, packagePath);
     final pubspecFile = File(path.join(fullPath, 'pubspec.yaml'));
@@ -22,67 +24,72 @@ class DependencyService {
     if (await pubspecFile.exists()) {
       final content = await pubspecFile.readAsString();
       final yamlMap = loadYaml(content);
-      final dependencies = <Dependency>[];
+      final dependencies = <String, Dependency>{};
+      final devDependencies = <String, Dependency>{};
+      final dependencyOverrides = <String, Dependency>{};
+
+      void addDependency(String name, dynamic value, String type,
+          Map<String, Dependency> targetMap) {
+        final versionInfo = _parseVersionInfo(value);
+        targetMap[name] = Dependency(
+          id: _uuid.v4(),
+          name: name,
+          currentVersion: versionInfo.version,
+          latestVersion: versionInfo.isVersioned ? 'Loading...' : 'N/A',
+          type: type,
+          isVersioned: versionInfo.isVersioned,
+          isSdk: type == 'sdk',
+        );
+      }
 
       // Add Dart SDK dependency
       final dartSdkVersion = yamlMap['environment']?['sdk'];
       if (dartSdkVersion != null) {
-        dependencies.add(Dependency(
-          name: 'Dart SDK',
-          currentVersion: dartSdkVersion,
-          latestVersion: 'Loading...',
-          type: 'sdk',
-          isVersioned: true,
-          isSdk: true,
-        ));
+        addDependency('Dart SDK', dartSdkVersion, 'sdk', dependencies);
       }
 
       // Add Flutter SDK dependency
       final flutterSdkVersion = yamlMap['dependencies']?['flutter']?['sdk'];
       if (flutterSdkVersion != null) {
-        dependencies.add(Dependency(
-          name: 'Flutter SDK',
-          currentVersion: flutterSdkVersion,
-          latestVersion: 'Loading...',
-          type: 'sdk',
-          isVersioned: true,
-          isSdk: true,
-        ));
+        addDependency('Flutter SDK', flutterSdkVersion, 'sdk', dependencies);
       }
 
-      void addDependencies(String type, Map<dynamic, dynamic> deps) {
+      void addDependencies(String type, Map<dynamic, dynamic> deps,
+          Map<String, Dependency> targetMap) {
         deps.forEach((key, value) {
           if (key != 'flutter' || type != 'dependencies') {
-            final versionInfo = _parseVersionInfo(value);
-            dependencies.add(Dependency(
-              name: key.toString(),
-              currentVersion: versionInfo.version,
-              latestVersion: versionInfo.isVersioned ? 'Loading...' : 'N/A',
-              type: type,
-              isVersioned: versionInfo.isVersioned,
-            ));
+            addDependency(key.toString(), value, type, targetMap);
           }
         });
       }
 
-      addDependencies('dependencies', yamlMap['dependencies'] ?? {});
-      addDependencies('dev_dependencies', yamlMap['dev_dependencies'] ?? {});
       addDependencies(
-          'dependency_overrides', yamlMap['dependency_overrides'] ?? {});
+          'dependencies', yamlMap['dependencies'] ?? {}, dependencies);
+      addDependencies('dev_dependencies', yamlMap['dev_dependencies'] ?? {},
+          devDependencies);
+      addDependencies('dependency_overrides',
+          yamlMap['dependency_overrides'] ?? {}, dependencyOverrides);
 
-      return dependencies;
+      return {
+        'dependencies': dependencies,
+        'dev_dependencies': devDependencies,
+        'dependency_overrides': dependencyOverrides,
+      };
     } else {
       throw Exception('pubspec.yaml not found at path: ${pubspecFile.path}');
     }
   }
 
-  Stream<Dependency> fetchLatestVersions(List<Dependency> dependencies) async* {
-    for (final dep in dependencies) {
-      if (dep.isVersioned) {
-        final latestVersion = await getLatestVersion(dep.name, dep.isSdk);
-        yield dep.copyWith(latestVersion: latestVersion);
-      } else {
-        yield dep;
+  Stream<Dependency> fetchLatestVersions(
+      Map<String, Map<String, Dependency>> dependencies) async* {
+    for (final depMap in dependencies.values) {
+      for (final dep in depMap.values) {
+        if (dep.isVersioned) {
+          final latestVersion = await getLatestVersion(dep.name, dep.isSdk);
+          yield dep.copyWith(latestVersion: latestVersion);
+        } else {
+          yield dep;
+        }
       }
     }
   }
@@ -194,11 +201,13 @@ class DependencyService {
 
       final dependencies =
           await fetchLocalDependencies(selectedDirectory, packagePath);
-      for (var dep in dependencies) {
-        if (dep.isVersioned && !dep.isSdk) {
-          final latestVersion = await getLatestVersion(dep.name, dep.isSdk);
-          if (latestVersion != 'Unknown') {
-            editor.update([dep.type, dep.name], '^$latestVersion');
+      for (var depMap in dependencies.values) {
+        for (var dep in depMap.values) {
+          if (dep.isVersioned && !dep.isSdk) {
+            final latestVersion = await getLatestVersion(dep.name, dep.isSdk);
+            if (latestVersion != 'Unknown') {
+              editor.update([dep.type, dep.name], '^$latestVersion');
+            }
           }
         }
       }

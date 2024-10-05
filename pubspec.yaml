@@ -45,6 +45,7 @@ dependencies:
   shared_preferences: ^2.3.2
   flutter_animate: ^4.5.0
   flutter_hooks: ^0.20.5
+  uuid: ^4.5.1
 
 dev_dependencies:
   flutter_test:

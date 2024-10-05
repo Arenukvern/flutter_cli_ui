@@ -2,7 +2,7 @@ import 'package:pub_semver/pub_semver.dart';
 
 /// Represents a single dependency in a Flutter package.
 class Dependency {
-  /// The name of the dependency.
+  final String id;
   final String name;
 
   /// The current version of the dependency.
@@ -22,6 +22,7 @@ class Dependency {
 
   /// Constructs a [Dependency] instance.
   const Dependency({
+    required this.id,
     required this.name,
     required this.currentVersion,
     required this.latestVersion,
@@ -52,6 +53,7 @@ class Dependency {
     bool? isSdk,
   }) {
     return Dependency(
+      id: id,
       name: name ?? this.name,
       currentVersion: currentVersion ?? this.currentVersion,
       latestVersion: latestVersion ?? this.latestVersion,

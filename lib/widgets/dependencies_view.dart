@@ -10,7 +10,7 @@ import 'ui_list_tile.dart';
 /// A widget that displays a list of dependencies for a Flutter package.
 class DependenciesView extends StatelessWidget {
   /// The list of dependencies to display.
-  final List<Dependency> dependencies;
+  final Map<String, Map<String, Dependency>> dependencies;
 
   /// The currently selected package.
   final String? selectedPackage;
@@ -51,7 +51,12 @@ class DependenciesView extends StatelessWidget {
 
   /// Sorts the dependencies by outdated status and name.
   List<Dependency> _sortDependencies() {
-    return List<Dependency>.from(dependencies)
+    final allDependencies = [
+      ...dependencies['dependencies']!.values,
+      ...dependencies['dev_dependencies']!.values,
+      ...dependencies['dependency_overrides']!.values,
+    ];
+    return allDependencies
       ..sort((a, b) {
         if (a.isOutdated && !b.isOutdated) return -1;
         if (!a.isOutdated && b.isOutdated) return 1;
@@ -110,10 +115,12 @@ class DependenciesView extends StatelessWidget {
           child: ListView(
             children: [
               _buildSdkSection(sortedDependencies),
-              _buildDependencySection('dependencies', sortedDependencies),
-              _buildDependencySection('dev_dependencies', sortedDependencies),
               _buildDependencySection(
-                  'dependency_overrides', sortedDependencies),
+                  'dependencies', dependencies['dependencies']!),
+              _buildDependencySection(
+                  'dev_dependencies', dependencies['dev_dependencies']!),
+              _buildDependencySection('dependency_overrides',
+                  dependencies['dependency_overrides']!),
             ],
           ),
         ),
@@ -142,29 +149,25 @@ class DependenciesView extends StatelessWidget {
   }
 
   Widget _buildDependencySection(
-      String depType, List<Dependency> sortedDependencies) {
-    final deps = sortedDependencies
-        .where((dep) => dep.type == depType && !dep.isSdk)
-        .toList();
-    if (deps.isEmpty) return const SizedBox.shrink();
+      String sectionTitle, Map<String, Dependency> dependencies) {
+    final sectionDependencies = dependencies.values.toList();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Text(
-            '$depType:',
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-          ),
-        ),
-        ...deps.map(_buildDependencyTile),
-      ],
+    if (sectionDependencies.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return ExpansionTile(
+      key: ValueKey('section_$sectionTitle'),
+      title: Text(sectionTitle),
+      initiallyExpanded: true,
+      children: sectionDependencies.map(_buildDependencyTile).toList(),
     );
   }
 
   Widget _buildDependencyTile(Dependency dep) {
+    final uniqueKey = '${dep.type}_${dep.name}_${dep.id}';
     return UiListTile(
+      key: ValueKey(uniqueKey),
       title: dep.name,
       subtitle: 'Current: ${dep.currentVersion}, Latest: ${dep.latestVersion}',
       isOutdated: dep.isOutdated,

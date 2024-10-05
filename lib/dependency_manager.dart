@@ -20,7 +20,11 @@ class _DependencyManagerState extends State<DependencyManager> {
   final FileService _fileService = FileService();
   String? selectedDirectory;
   List<String> flutterPackages = [];
-  List<Dependency> dependencies = [];
+  Map<String, Map<String, Dependency>> dependencies = {
+    'dependencies': {},
+    'dev_dependencies': {},
+    'dependency_overrides': {},
+  };
   bool isLoading = false;
   bool isFetchingLatestVersions = false;
   double _dividerPosition = 0.5;
@@ -34,7 +38,11 @@ class _DependencyManagerState extends State<DependencyManager> {
         selectedDirectory = directory;
         _dependencyService.selectedDirectory = directory;
         flutterPackages = [];
-        dependencies = [];
+        dependencies = {
+          'dependencies': {},
+          'dev_dependencies': {},
+          'dependency_overrides': {},
+        };
         _selectedPackage = null;
       });
       await scanPackages();
@@ -67,7 +75,11 @@ class _DependencyManagerState extends State<DependencyManager> {
   Future<void> fetchDependencies(String packagePath) async {
     setState(() {
       isLoading = true;
-      dependencies = [];
+      dependencies = {
+        'dependencies': {},
+        'dev_dependencies': {},
+        'dependency_overrides': {},
+      };
     });
 
     try {
@@ -81,14 +93,10 @@ class _DependencyManagerState extends State<DependencyManager> {
 
       _dependencySubscription?.cancel();
       _dependencySubscription =
-          _dependencyService.fetchLatestVersions(localDeps).listen(
+          _dependencyService.fetchLatestVersions(dependencies).listen(
         (updatedDep) {
           setState(() {
-            final index =
-                dependencies.indexWhere((d) => d.name == updatedDep.name);
-            if (index != -1) {
-              dependencies[index] = updatedDep;
-            }
+            dependencies[updatedDep.type]![updatedDep.name] = updatedDep;
           });
         },
         onDone: () {
@@ -182,7 +190,8 @@ class _DependencyManagerState extends State<DependencyManager> {
           _selectedPackage!, conflictMessage);
       await fetchDependencies(_selectedPackage!);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Conflicts resolved successfully')),
+        const SnackBar(
+            content: Text('Conflicts resolved. Please run pub get again.')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
