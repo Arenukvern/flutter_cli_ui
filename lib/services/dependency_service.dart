@@ -12,6 +12,7 @@ import 'package_cache_service.dart';
 
 class DependencyService {
   final PackageCacheService _cacheService = PackageCacheService();
+  String? selectedDirectory; // Add this line to store the selected directory
 
   Future<List<Dependency>> fetchLocalDependencies(
       String selectedDirectory, String packagePath) async {
@@ -236,6 +237,89 @@ class DependencyService {
   bool _isVersionedDependency(dynamic value) {
     return _parseVersionInfo(value).isVersioned;
   }
+
+  Future<void> resolveConflicts(
+      String packagePath, String conflictMessage) async {
+    if (selectedDirectory == null) {
+      throw Exception('No directory selected');
+    }
+
+    final fullPath = path.join(selectedDirectory!, packagePath);
+    final pubspecFile = File(path.join(fullPath, 'pubspec.yaml'));
+
+    if (await pubspecFile.exists()) {
+      final content = await pubspecFile.readAsString();
+      final yamlEditor = YamlEditor(content);
+
+      // Parse the conflict message to identify conflicting packages
+      final conflictingPackages = _parseConflictMessage(conflictMessage);
+
+      // Add conflicting packages to dependency_overrides
+      for (final package in conflictingPackages) {
+        yamlEditor
+            .update(['dependency_overrides', package.name], package.version);
+      }
+
+      // Write the updated pubspec.yaml
+      await pubspecFile.writeAsString(yamlEditor.toString());
+    } else {
+      throw Exception('pubspec.yaml not found at path: ${pubspecFile.path}');
+    }
+  }
+
+  List<ConflictingPackage> _parseConflictMessage(String message) {
+    final conflictingPackages = <ConflictingPackage>[];
+    final lines = message.split('\n');
+
+    for (final line in lines) {
+      // Look for lines that contain package versions, ignoring the word "version" if present
+      final match = RegExp(r'(\w+)(?:\s+version)?:\s+(\^?\d+\.\d+\.\d+)')
+          .firstMatch(line);
+      if (match != null) {
+        final packageName = match.group(1)!;
+        final version = match.group(2)!;
+        conflictingPackages
+            .add(ConflictingPackage(name: packageName, version: version));
+      }
+    }
+
+    // If we couldn't find any conflicts, try to parse the error message
+    if (conflictingPackages.isEmpty) {
+      final errorMatches =
+          RegExp(r'(\w+) from (\w+) depends on (\w+) (\^?\d+\.\d+\.\d+)')
+              .allMatches(message);
+      for (final match in errorMatches) {
+        final packageName = match.group(3)!;
+        final version = match.group(4)!;
+        conflictingPackages
+            .add(ConflictingPackage(name: packageName, version: version));
+      }
+    }
+
+    return conflictingPackages;
+  }
+
+  Future<String> getPubspecContent(String packagePath) async {
+    if (selectedDirectory == null) {
+      throw Exception('No directory selected');
+    }
+
+    final fullPath = path.join(selectedDirectory!, packagePath);
+    final pubspecFile = File(path.join(fullPath, 'pubspec.yaml'));
+
+    if (await pubspecFile.exists()) {
+      return await pubspecFile.readAsString();
+    } else {
+      throw Exception('pubspec.yaml not found at path: ${pubspecFile.path}');
+    }
+  }
+}
+
+class ConflictingPackage {
+  final String name;
+  final String version;
+
+  ConflictingPackage({required this.name, required this.version});
 }
 
 class _VersionInfo {
