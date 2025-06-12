@@ -17,7 +17,9 @@ class DependencyService {
   final _uuid = const Uuid();
 
   Future<Map<String, Map<String, Dependency>>> fetchLocalDependencies(
-      String selectedDirectory, String packagePath) async {
+    String selectedDirectory,
+    String packagePath,
+  ) async {
     final fullPath = path.join(selectedDirectory, packagePath);
     final pubspecFile = File(path.join(fullPath, 'pubspec.yaml'));
 
@@ -28,8 +30,12 @@ class DependencyService {
       final devDependencies = <String, Dependency>{};
       final dependencyOverrides = <String, Dependency>{};
 
-      void addDependency(String name, dynamic value, String type,
-          Map<String, Dependency> targetMap) {
+      void addDependency(
+        String name,
+        dynamic value,
+        String type,
+        Map<String, Dependency> targetMap,
+      ) {
         final versionInfo = _parseVersionInfo(value);
         targetMap[name] = Dependency(
           id: _uuid.v4(),
@@ -54,8 +60,11 @@ class DependencyService {
         addDependency('Flutter SDK', flutterSdkVersion, 'sdk', dependencies);
       }
 
-      void addDependencies(String type, Map<dynamic, dynamic> deps,
-          Map<String, Dependency> targetMap) {
+      void addDependencies(
+        String type,
+        Map<dynamic, dynamic> deps,
+        Map<String, Dependency> targetMap,
+      ) {
         deps.forEach((key, value) {
           if (key != 'flutter' || type != 'dependencies') {
             addDependency(key.toString(), value, type, targetMap);
@@ -64,11 +73,20 @@ class DependencyService {
       }
 
       addDependencies(
-          'dependencies', yamlMap['dependencies'] ?? {}, dependencies);
-      addDependencies('dev_dependencies', yamlMap['dev_dependencies'] ?? {},
-          devDependencies);
-      addDependencies('dependency_overrides',
-          yamlMap['dependency_overrides'] ?? {}, dependencyOverrides);
+        'dependencies',
+        yamlMap['dependencies'] ?? {},
+        dependencies,
+      );
+      addDependencies(
+        'dev_dependencies',
+        yamlMap['dev_dependencies'] ?? {},
+        devDependencies,
+      );
+      addDependencies(
+        'dependency_overrides',
+        yamlMap['dependency_overrides'] ?? {},
+        dependencyOverrides,
+      );
 
       return {
         'dependencies': dependencies,
@@ -81,7 +99,8 @@ class DependencyService {
   }
 
   Stream<Dependency> fetchLatestVersions(
-      Map<String, Map<String, Dependency>> dependencies) async* {
+    Map<String, Map<String, Dependency>> dependencies,
+  ) async* {
     for (final depMap in dependencies.values) {
       for (final dep in depMap.values) {
         if (dep.isVersioned) {
@@ -109,8 +128,9 @@ class DependencyService {
     }
 
     try {
-      final response = await http
-          .get(Uri.parse('https://pub.dev/api/packages/$packageName'));
+      final response = await http.get(
+        Uri.parse('https://pub.dev/api/packages/$packageName'),
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final latestVersion = data['latest']['version'];
@@ -125,8 +145,9 @@ class DependencyService {
 
   Future<String> _getLatestDartSdkVersion() async {
     try {
-      final response = await http.get(Uri.parse(
-          'https://api.github.com/repos/dart-lang/sdk/releases/latest'));
+      final response = await http.get(
+        Uri.parse('https://api.github.com/repos/dart-lang/sdk/releases/latest'),
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['tag_name'].replaceAll('v', '');
@@ -139,8 +160,11 @@ class DependencyService {
 
   Future<String> _getLatestFlutterSdkVersion() async {
     try {
-      final response = await http.get(Uri.parse(
-          'https://api.github.com/repos/flutter/flutter/releases/latest'));
+      final response = await http.get(
+        Uri.parse(
+          'https://api.github.com/repos/flutter/flutter/releases/latest',
+        ),
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['tag_name'].replaceAll('v', '');
@@ -151,8 +175,12 @@ class DependencyService {
     return 'Unknown';
   }
 
-  Future<void> upgradeDependency(String selectedDirectory, String packagePath,
-      String packageName, String dependencyType) async {
+  Future<void> upgradeDependency(
+    String selectedDirectory,
+    String packagePath,
+    String packageName,
+    String dependencyType,
+  ) async {
     final fullPath = path.join(selectedDirectory, packagePath);
     final pubspecFile = File(path.join(fullPath, 'pubspec.yaml'));
 
@@ -172,7 +200,7 @@ class DependencyService {
         }
       } else {
         final currentValue = editor.parseAt([dependencyType, packageName]);
-        if (_isVersionedDependency(currentValue)) {
+        if (_isVersionedDependency(currentValue.value)) {
           final latestVersion = await getLatestVersion(packageName, false);
           if (latestVersion != 'Unknown') {
             editor.update([dependencyType, packageName], '^$latestVersion');
@@ -181,7 +209,8 @@ class DependencyService {
           }
         } else {
           throw Exception(
-              'Cannot upgrade non-versioned dependency: $packageName');
+            'Cannot upgrade non-versioned dependency: $packageName',
+          );
         }
       }
 
@@ -192,15 +221,19 @@ class DependencyService {
   }
 
   Future<void> upgradeAllDependencies(
-      String selectedDirectory, String packagePath) async {
+    String selectedDirectory,
+    String packagePath,
+  ) async {
     final fullPath = path.join(selectedDirectory, packagePath);
     final pubspecFile = File(path.join(fullPath, 'pubspec.yaml'));
     if (await pubspecFile.exists()) {
       final content = await pubspecFile.readAsString();
       final editor = YamlEditor(content);
 
-      final dependencies =
-          await fetchLocalDependencies(selectedDirectory, packagePath);
+      final dependencies = await fetchLocalDependencies(
+        selectedDirectory,
+        packagePath,
+      );
       for (var depMap in dependencies.values) {
         for (var dep in depMap.values) {
           if (dep.isVersioned && !dep.isSdk) {
@@ -220,8 +253,10 @@ class DependencyService {
 
   Future<void> runPubGet(String selectedDirectory, String packagePath) async {
     final fullPath = path.join(selectedDirectory, packagePath);
-    final result = await Process.run('flutter', ['pub', 'get'],
-        workingDirectory: fullPath);
+    final result = await Process.run('flutter', [
+      'pub',
+      'get',
+    ], workingDirectory: fullPath);
 
     if (result.exitCode != 0) {
       throw Exception(result.stderr);
@@ -248,7 +283,9 @@ class DependencyService {
   }
 
   Future<void> resolveConflicts(
-      String packagePath, String conflictMessage) async {
+    String packagePath,
+    String conflictMessage,
+  ) async {
     if (selectedDirectory == null) {
       throw Exception('No directory selected');
     }
@@ -265,8 +302,10 @@ class DependencyService {
 
       // Add conflicting packages to dependency_overrides
       for (final package in conflictingPackages) {
-        yamlEditor
-            .update(['dependency_overrides', package.name], package.version);
+        yamlEditor.update([
+          'dependency_overrides',
+          package.name,
+        ], package.version);
       }
 
       // Write the updated pubspec.yaml
@@ -282,26 +321,29 @@ class DependencyService {
 
     for (final line in lines) {
       // Look for lines that contain package versions, ignoring the word "version" if present
-      final match = RegExp(r'(\w+)(?:\s+version)?:\s+(\^?\d+\.\d+\.\d+)')
-          .firstMatch(line);
+      final match = RegExp(
+        r'(\w+)(?:\s+version)?:\s+(\^?\d+\.\d+\.\d+)',
+      ).firstMatch(line);
       if (match != null) {
         final packageName = match.group(1)!;
         final version = match.group(2)!;
-        conflictingPackages
-            .add(ConflictingPackage(name: packageName, version: version));
+        conflictingPackages.add(
+          ConflictingPackage(name: packageName, version: version),
+        );
       }
     }
 
     // If we couldn't find any conflicts, try to parse the error message
     if (conflictingPackages.isEmpty) {
-      final errorMatches =
-          RegExp(r'(\w+) from (\w+) depends on (\w+) (\^?\d+\.\d+\.\d+)')
-              .allMatches(message);
+      final errorMatches = RegExp(
+        r'(\w+) from (\w+) depends on (\w+) (\^?\d+\.\d+\.\d+)',
+      ).allMatches(message);
       for (final match in errorMatches) {
         final packageName = match.group(3)!;
         final version = match.group(4)!;
-        conflictingPackages
-            .add(ConflictingPackage(name: packageName, version: version));
+        conflictingPackages.add(
+          ConflictingPackage(name: packageName, version: version),
+        );
       }
     }
 
