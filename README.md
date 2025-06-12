@@ -1,4 +1,3 @@
-<a href="https://app.commanddash.io/agent/github_arenukvern_flutter_cli_ui"><img src="https://img.shields.io/badge/AI-Code%20Agent-EB9FDA"></a>
 [![Made with AI](https://img.shields.io/badge/Made%20with-AI-lightgrey?style=for-the-badge)](https://github.com/mefengl/made-by-ai)
 <a title="Discord" href="https://discord.com/invite/y54DpJwmAn" ><img src="https://img.shields.io/discord/696688204476055592.svg" /></a>
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg)](CODE_OF_CONDUCT.md)
