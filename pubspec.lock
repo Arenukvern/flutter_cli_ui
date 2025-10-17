@@ -521,10 +521,10 @@ packages:
     dependency: "direct dev"
     description:
       name: xsoulspace_lints
-      sha256: "63f6c3f34eb3409af30bbcb188ab5cd1c355474d227f6bf26fc9d1100ed1631f"
+      sha256: fc56073d7a17b4b0e8ef9efbc5e1948b2b4eb8e0fabdbfe702e9887151250c34
       url: "https://pub.dev"
     source: hosted
-    version: "0.1.0"
+    version: "0.1.2"
   yaml:
     dependency: "direct main"
     description:
