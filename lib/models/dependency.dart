@@ -41,9 +41,11 @@ class Dependency {
         currentVersion.startsWith('flutter'))
       return false;
     try {
-      final current = VersionConstraint.parse(currentVersion);
+      // Extract the base version from constraint (remove ^, >=, etc.)
+      final baseVersion = _extractBaseVersion(currentVersion);
+      final current = Version.parse(baseVersion);
       final latest = Version.parse(latestVersion);
-      return !current.allows(latest);
+      return latest > current;
     } catch (e) {
       return false;
     }
@@ -68,4 +70,21 @@ class Dependency {
       isSdk: isSdk ?? this.isSdk,
     );
   }
+}
+
+/// Extracts the base version from a version constraint string.
+/// Removes constraint operators like ^, >=, >, <, <=, ~, etc.
+String _extractBaseVersion(String versionConstraint) {
+  // Remove common constraint operators and keep only the version part
+  final constraintOperators = ['^', '>=', '>', '<=', '<', '~', ' '];
+  var baseVersion = versionConstraint;
+
+  for (final operator in constraintOperators) {
+    if (baseVersion.startsWith(operator)) {
+      baseVersion = baseVersion.substring(operator.length);
+      break; // Only remove the first matching operator
+    }
+  }
+
+  return baseVersion.trim();
 }
