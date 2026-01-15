@@ -1,7 +1,19 @@
+// ignore_for_file: avoid_catches_without_on_clauses, lines_longer_than_80_chars
+
 import 'package:pub_semver/pub_semver.dart';
 
 /// Represents a single dependency in a Flutter package.
 class Dependency {
+  /// Constructs a [Dependency] instance.
+  const Dependency({
+    required this.id,
+    required this.name,
+    required this.currentVersion,
+    required this.latestVersion,
+    required this.type,
+    required this.isVersioned,
+    this.isSdk = false,
+  });
   final String id;
   final String name;
 
@@ -20,17 +32,6 @@ class Dependency {
   /// Whether the dependency is an SDK or not.
   final bool isSdk;
 
-  /// Constructs a [Dependency] instance.
-  const Dependency({
-    required this.id,
-    required this.name,
-    required this.currentVersion,
-    required this.latestVersion,
-    required this.type,
-    required this.isVersioned,
-    this.isSdk = false,
-  });
-
   /// Checks if the dependency is outdated.
   bool get isOutdated {
     if (!isVersioned ||
@@ -38,8 +39,9 @@ class Dependency {
         latestVersion.startsWith('Loading') ||
         latestVersion.startsWith('flutter') ||
         currentVersion.startsWith('Loading') ||
-        currentVersion.startsWith('flutter'))
+        currentVersion.startsWith('flutter')) {
       return false;
+    }
     try {
       // Extract the base version from constraint (remove ^, >=, etc.)
       final baseVersion = _extractBaseVersion(currentVersion);
@@ -53,28 +55,26 @@ class Dependency {
 
   /// Creates a copy of this dependency with the specified properties.
   Dependency copyWith({
-    String? name,
-    String? currentVersion,
-    String? latestVersion,
-    String? type,
-    bool? isVersioned,
-    bool? isSdk,
-  }) {
-    return Dependency(
-      id: id,
-      name: name ?? this.name,
-      currentVersion: currentVersion ?? this.currentVersion,
-      latestVersion: latestVersion ?? this.latestVersion,
-      type: type ?? this.type,
-      isVersioned: isVersioned ?? this.isVersioned,
-      isSdk: isSdk ?? this.isSdk,
-    );
-  }
+    final String? name,
+    final String? currentVersion,
+    final String? latestVersion,
+    final String? type,
+    final bool? isVersioned,
+    final bool? isSdk,
+  }) => Dependency(
+    id: id,
+    name: name ?? this.name,
+    currentVersion: currentVersion ?? this.currentVersion,
+    latestVersion: latestVersion ?? this.latestVersion,
+    type: type ?? this.type,
+    isVersioned: isVersioned ?? this.isVersioned,
+    isSdk: isSdk ?? this.isSdk,
+  );
 }
 
 /// Extracts the base version from a version constraint string.
 /// Removes constraint operators like ^, >=, >, <, <=, ~, etc.
-String _extractBaseVersion(String versionConstraint) {
+String _extractBaseVersion(final String versionConstraint) {
   // Remove common constraint operators and keep only the version part
   final constraintOperators = ['^', '>=', '>', '<=', '<', '~', ' '];
   var baseVersion = versionConstraint;

@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_dynamic_calls
+
 import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -5,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class PackageCacheService {
   static const String _cacheKey = 'package_versions_cache';
 
-  Future<String?> getCachedVersion(String packageName) async {
+  Future<String?> getCachedVersion(final String packageName) async {
     final prefs = await SharedPreferences.getInstance();
     final cacheString = prefs.getString(_cacheKey);
     if (cacheString != null) {
@@ -21,7 +23,10 @@ class PackageCacheService {
     return null;
   }
 
-  Future<void> cacheVersion(String packageName, String version) async {
+  Future<void> cacheVersion(
+    final String packageName,
+    final String version,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     final cacheString = prefs.getString(_cacheKey);
     final cache = cacheString != null

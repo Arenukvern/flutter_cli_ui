@@ -1,12 +1,13 @@
+// ignore_for_file: avoid_catches_without_on_clauses, use_build_context_synchronously, lines_longer_than_80_chars
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-
-import 'models/dependency.dart';
-import 'services/dependency_service.dart';
-import 'services/file_service.dart';
-import 'widgets/dependencies_view.dart';
-import 'widgets/package_list.dart';
+import 'package:flutter_cli_ui/models/dependency.dart';
+import 'package:flutter_cli_ui/services/dependency_service.dart';
+import 'package:flutter_cli_ui/services/file_service.dart';
+import 'package:flutter_cli_ui/widgets/dependencies_view.dart';
+import 'package:flutter_cli_ui/widgets/package_list.dart';
 
 class DependencyManager extends StatefulWidget {
   const DependencyManager({super.key});
@@ -63,9 +64,9 @@ class _DependencyManagerState extends State<DependencyManager> {
         flutterPackages = packages;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error scanning packages: ${e.toString()}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error scanning packages: $e')));
     } finally {
       setState(() {
         isLoading = false;
@@ -73,7 +74,7 @@ class _DependencyManagerState extends State<DependencyManager> {
     }
   }
 
-  Future<void> fetchDependencies(String packagePath) async {
+  Future<void> fetchDependencies(final String packagePath) async {
     setState(() {
       isLoading = true;
       dependencies = {
@@ -94,11 +95,11 @@ class _DependencyManagerState extends State<DependencyManager> {
         isFetchingLatestVersions = true;
       });
 
-      _dependencySubscription?.cancel();
+      await _dependencySubscription?.cancel();
       _dependencySubscription = _dependencyService
           .fetchLatestVersions(dependencies)
           .listen(
-            (updatedDep) {
+            (final updatedDep) {
               setState(() {
                 dependencies[updatedDep.type] ??= {};
                 dependencies[updatedDep.type]![updatedDep.name] = updatedDep;
@@ -109,7 +110,7 @@ class _DependencyManagerState extends State<DependencyManager> {
                 isFetchingLatestVersions = false;
               });
             },
-            onError: (error) {
+            onError: (final error) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Error fetching latest versions: $error'),
@@ -132,8 +133,8 @@ class _DependencyManagerState extends State<DependencyManager> {
   }
 
   Future<void> upgradeDependency(
-    String packageName,
-    String dependencyType,
+    final String packageName,
+    final String dependencyType,
   ) async {
     if (_selectedPackage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -155,14 +156,12 @@ class _DependencyManagerState extends State<DependencyManager> {
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error upgrading $packageName: ${e.toString()}'),
-        ),
+        SnackBar(content: Text('Error upgrading $packageName: $e')),
       );
     }
   }
 
-  Future<void> upgradeAllDependencies(String packagePath) async {
+  Future<void> upgradeAllDependencies(final String packagePath) async {
     try {
       await _dependencyService.upgradeAllDependencies(
         selectedDirectory!,
@@ -174,27 +173,25 @@ class _DependencyManagerState extends State<DependencyManager> {
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error upgrading dependencies: ${e.toString()}'),
-        ),
+        SnackBar(content: Text('Error upgrading dependencies: $e')),
       );
     }
   }
 
-  Future<void> runPubGet(String packagePath) async {
+  Future<void> runPubGet(final String packagePath) async {
     try {
       await _dependencyService.runPubGet(selectedDirectory!, packagePath);
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Successfully ran pub get')));
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error running pub get: ${e.toString()}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error running pub get: $e')));
     }
   }
 
-  Future<void> _resolveConflicts(String conflictMessage) async {
+  Future<void> _resolveConflicts(final String conflictMessage) async {
     if (_selectedPackage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select a package first')),
@@ -214,110 +211,108 @@ class _DependencyManagerState extends State<DependencyManager> {
         ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error resolving conflicts: ${e.toString()}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error resolving conflicts: $e')));
     }
   }
 
   @override
   void dispose() {
-    _dependencySubscription?.cancel();
+    unawaited(_dependencySubscription?.cancel());
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Dependency Manager')),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                ElevatedButton(
-                  onPressed: pickDirectory,
-                  child: const Text('Open Folder'),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: selectedDirectory != null
-                      ? Text('Selected Directory: $selectedDirectory')
-                      : const Text('No directory selected'),
-                ),
-              ],
-            ),
+  Widget build(final BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Dependency Manager')),
+    body: Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: Row(
+            children: [
+              ElevatedButton(
+                onPressed: pickDirectory,
+                child: const Text('Open Folder'),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: selectedDirectory != null
+                    ? Text('Selected Directory: $selectedDirectory')
+                    : const Text('No directory selected'),
+              ),
+            ],
           ),
-          Expanded(
-            child: CustomMultiChildLayout(
-              delegate: _PanelLayoutDelegate(_dividerPosition),
-              children: [
-                LayoutId(
-                  id: 'left',
-                  child: PackageList(
-                    packages: flutterPackages,
-                    isLoading: isLoading,
-                    selectedPackage: _selectedPackage,
-                    onPackageSelected: (package) {
+        ),
+        Expanded(
+          child: CustomMultiChildLayout(
+            delegate: _PanelLayoutDelegate(_dividerPosition),
+            children: [
+              LayoutId(
+                id: 'left',
+                child: PackageList(
+                  packages: flutterPackages,
+                  isLoading: isLoading,
+                  selectedPackage: _selectedPackage,
+                  onPackageSelected: (final package) {
+                    setState(() {
+                      _selectedPackage = package;
+                    });
+                    unawaited(fetchDependencies(package));
+                  },
+                  onReorder: (final oldIndex, newIndex) {
+                    setState(() {
+                      if (oldIndex < newIndex) {
+                        newIndex -= 1;
+                      }
+                      final item = flutterPackages.removeAt(oldIndex);
+                      flutterPackages.insert(newIndex, item);
+                    });
+                  },
+                ),
+              ),
+              LayoutId(
+                id: 'divider',
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.resizeLeftRight,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onHorizontalDragUpdate: (final details) {
                       setState(() {
-                        _selectedPackage = package;
-                      });
-                      fetchDependencies(package);
-                    },
-                    onReorder: (oldIndex, newIndex) {
-                      setState(() {
-                        if (oldIndex < newIndex) {
-                          newIndex -= 1;
-                        }
-                        final item = flutterPackages.removeAt(oldIndex);
-                        flutterPackages.insert(newIndex, item);
+                        _dividerPosition +=
+                            details.delta.dx / context.size!.width;
+                        _dividerPosition = _dividerPosition.clamp(0.1, 0.9);
                       });
                     },
+                    child: const VerticalDivider(width: 8, thickness: 8),
                   ),
                 ),
-                LayoutId(
-                  id: 'divider',
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.resizeLeftRight,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.translucent,
-                      onHorizontalDragUpdate: (details) {
-                        setState(() {
-                          _dividerPosition +=
-                              details.delta.dx / context.size!.width;
-                          _dividerPosition = _dividerPosition.clamp(0.1, 0.9);
-                        });
-                      },
-                      child: const VerticalDivider(width: 8, thickness: 8),
-                    ),
-                  ),
+              ),
+              LayoutId(
+                id: 'right',
+                child: DependenciesView(
+                  dependencies: dependencies,
+                  selectedPackage: _selectedPackage,
+                  onUpgradeAll: () => _selectedPackage != null
+                      ? upgradeAllDependencies(_selectedPackage!)
+                      : null,
+                  onRunPubGet: () => _selectedPackage != null
+                      ? runPubGet(_selectedPackage!)
+                      : null,
+                  onUpgradeDependency: upgradeDependency,
+                  isLoading: isLoading,
+                  isFetchingLatestVersions: isFetchingLatestVersions,
+                  onResolveConflicts: _resolveConflicts,
+                  dependencyService: _dependencyService,
                 ),
-                LayoutId(
-                  id: 'right',
-                  child: DependenciesView(
-                    dependencies: dependencies,
-                    selectedPackage: _selectedPackage,
-                    onUpgradeAll: () => _selectedPackage != null
-                        ? upgradeAllDependencies(_selectedPackage!)
-                        : null,
-                    onRunPubGet: () => _selectedPackage != null
-                        ? runPubGet(_selectedPackage!)
-                        : null,
-                    onUpgradeDependency: upgradeDependency,
-                    isLoading: isLoading,
-                    isFetchingLatestVersions: isFetchingLatestVersions,
-                    onResolveConflicts: _resolveConflicts,
-                    dependencyService: _dependencyService,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
 }
 
 class _PanelLayoutDelegate extends MultiChildLayoutDelegate {
@@ -326,7 +321,7 @@ class _PanelLayoutDelegate extends MultiChildLayoutDelegate {
   final double dividerPosition;
 
   @override
-  void performLayout(Size size) {
+  void performLayout(final Size size) {
     const dividerWidth = 8.0;
     final leftWidth = (size.width * dividerPosition).clamp(
       size.width * 0.1,
@@ -354,7 +349,6 @@ class _PanelLayoutDelegate extends MultiChildLayoutDelegate {
   }
 
   @override
-  bool shouldRelayout(_PanelLayoutDelegate oldDelegate) {
-    return dividerPosition != oldDelegate.dividerPosition;
-  }
+  bool shouldRelayout(final _PanelLayoutDelegate oldDelegate) =>
+      dividerPosition != oldDelegate.dividerPosition;
 }

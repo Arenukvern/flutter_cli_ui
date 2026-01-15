@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-
-import 'dependency_manager.dart';
+import 'package:flutter_cli_ui/dependency_manager.dart';
 
 void main() {
   runApp(const MyApp());
@@ -10,13 +9,9 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Dependency Manager',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: const DependencyManager(),
-    );
-  }
+  Widget build(final BuildContext context) => MaterialApp(
+    title: 'Dependency Manager',
+    theme: ThemeData(primarySwatch: Colors.blue),
+    home: const DependencyManager(),
+  );
 }
