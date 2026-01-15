@@ -56,8 +56,9 @@ class _DependencyManagerState extends State<DependencyManager> {
     });
 
     try {
-      final packages =
-          await _fileService.scanFlutterPackages(selectedDirectory!);
+      final packages = await _fileService.scanFlutterPackages(
+        selectedDirectory!,
+      );
       setState(() {
         flutterPackages = packages;
       });
@@ -84,7 +85,9 @@ class _DependencyManagerState extends State<DependencyManager> {
 
     try {
       final localDeps = await _dependencyService.fetchLocalDependencies(
-          selectedDirectory!, packagePath);
+        selectedDirectory!,
+        packagePath,
+      );
       setState(() {
         dependencies = localDeps;
         isLoading = false;
@@ -92,27 +95,31 @@ class _DependencyManagerState extends State<DependencyManager> {
       });
 
       _dependencySubscription?.cancel();
-      _dependencySubscription =
-          _dependencyService.fetchLatestVersions(dependencies).listen(
-        (updatedDep) {
-          setState(() {
-            dependencies[updatedDep.type]![updatedDep.name] = updatedDep;
-          });
-        },
-        onDone: () {
-          setState(() {
-            isFetchingLatestVersions = false;
-          });
-        },
-        onError: (error) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error fetching latest versions: $error')),
+      _dependencySubscription = _dependencyService
+          .fetchLatestVersions(dependencies)
+          .listen(
+            (updatedDep) {
+              setState(() {
+                dependencies[updatedDep.type] ??= {};
+                dependencies[updatedDep.type]![updatedDep.name] = updatedDep;
+              });
+            },
+            onDone: () {
+              setState(() {
+                isFetchingLatestVersions = false;
+              });
+            },
+            onError: (error) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Error fetching latest versions: $error'),
+                ),
+              );
+              setState(() {
+                isFetchingLatestVersions = false;
+              });
+            },
           );
-          setState(() {
-            isFetchingLatestVersions = false;
-          });
-        },
-      );
     } catch (error) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching dependencies: $error')),
@@ -125,7 +132,9 @@ class _DependencyManagerState extends State<DependencyManager> {
   }
 
   Future<void> upgradeDependency(
-      String packageName, String dependencyType) async {
+    String packageName,
+    String dependencyType,
+  ) async {
     if (_selectedPackage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select a package first')),
@@ -135,7 +144,11 @@ class _DependencyManagerState extends State<DependencyManager> {
 
     try {
       await _dependencyService.upgradeDependency(
-          selectedDirectory!, _selectedPackage!, packageName, dependencyType);
+        selectedDirectory!,
+        _selectedPackage!,
+        packageName,
+        dependencyType,
+      );
       await fetchDependencies(_selectedPackage!);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Successfully upgraded $packageName')),
@@ -143,7 +156,8 @@ class _DependencyManagerState extends State<DependencyManager> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text('Error upgrading $packageName: ${e.toString()}')),
+          content: Text('Error upgrading $packageName: ${e.toString()}'),
+        ),
       );
     }
   }
@@ -151,7 +165,9 @@ class _DependencyManagerState extends State<DependencyManager> {
   Future<void> upgradeAllDependencies(String packagePath) async {
     try {
       await _dependencyService.upgradeAllDependencies(
-          selectedDirectory!, packagePath);
+        selectedDirectory!,
+        packagePath,
+      );
       await fetchDependencies(packagePath);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Successfully upgraded all dependencies')),
@@ -159,7 +175,8 @@ class _DependencyManagerState extends State<DependencyManager> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text('Error upgrading dependencies: ${e.toString()}')),
+          content: Text('Error upgrading dependencies: ${e.toString()}'),
+        ),
       );
     }
   }
@@ -167,9 +184,9 @@ class _DependencyManagerState extends State<DependencyManager> {
   Future<void> runPubGet(String packagePath) async {
     try {
       await _dependencyService.runPubGet(selectedDirectory!, packagePath);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Successfully ran pub get')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Successfully ran pub get')));
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error running pub get: ${e.toString()}')),
@@ -187,11 +204,14 @@ class _DependencyManagerState extends State<DependencyManager> {
 
     try {
       await _dependencyService.resolveConflicts(
-          _selectedPackage!, conflictMessage);
+        _selectedPackage!,
+        conflictMessage,
+      );
       await fetchDependencies(_selectedPackage!);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Conflicts resolved. Please run pub get again.')),
+          content: Text('Conflicts resolved. Please run pub get again.'),
+        ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -209,9 +229,7 @@ class _DependencyManagerState extends State<DependencyManager> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dependency Manager'),
-      ),
+      appBar: AppBar(title: const Text('Dependency Manager')),
       body: Column(
         children: [
           Padding(
@@ -316,16 +334,22 @@ class _PanelLayoutDelegate extends MultiChildLayoutDelegate {
     );
 
     layoutChild(
-        'left', BoxConstraints.tightFor(width: leftWidth, height: size.height));
+      'left',
+      BoxConstraints.tightFor(width: leftWidth, height: size.height),
+    );
     positionChild('left', Offset.zero);
 
-    layoutChild('divider',
-        BoxConstraints.tightFor(width: dividerWidth, height: size.height));
+    layoutChild(
+      'divider',
+      BoxConstraints.tightFor(width: dividerWidth, height: size.height),
+    );
     positionChild('divider', Offset(leftWidth, 0));
 
     final rightWidth = size.width - leftWidth - dividerWidth;
-    layoutChild('right',
-        BoxConstraints.tightFor(width: rightWidth, height: size.height));
+    layoutChild(
+      'right',
+      BoxConstraints.tightFor(width: rightWidth, height: size.height),
+    );
     positionChild('right', Offset(leftWidth + dividerWidth, 0));
   }
 

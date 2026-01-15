@@ -37,14 +37,17 @@ class DependencyService {
         Map<String, Dependency> targetMap,
       ) {
         final versionInfo = _parseVersionInfo(value);
+        final isSdkDep = type == 'sdk';
         targetMap[name] = Dependency(
           id: _uuid.v4(),
           name: name,
           currentVersion: versionInfo.version,
-          latestVersion: versionInfo.isVersioned ? 'Loading...' : 'N/A',
+          latestVersion: isSdkDep
+              ? 'N/A'
+              : (versionInfo.isVersioned ? 'Loading...' : 'N/A'),
           type: type,
-          isVersioned: versionInfo.isVersioned,
-          isSdk: type == 'sdk',
+          isVersioned: isSdkDep ? false : versionInfo.isVersioned,
+          isSdk: isSdkDep,
         );
       }
 
@@ -55,7 +58,7 @@ class DependencyService {
       }
 
       // Add Flutter SDK dependency
-      final flutterSdkVersion = yamlMap['dependencies']?['flutter']?['sdk'];
+      final flutterSdkVersion = yamlMap['environment']?['flutter'];
       if (flutterSdkVersion != null) {
         addDependency('Flutter SDK', flutterSdkVersion, 'sdk', dependencies);
       }
@@ -101,9 +104,9 @@ class DependencyService {
   Stream<Dependency> fetchLatestVersions(
     Map<String, Map<String, Dependency>> dependencies,
   ) async* {
-    for (final depMap in dependencies.values) {
+    for (final depMap in {...dependencies}.values) {
       for (final dep in depMap.values) {
-        if (dep.isVersioned) {
+        if (dep.isVersioned && !dep.isSdk) {
           final latestVersion = await getLatestVersion(dep.name, dep.isSdk);
           yield dep.copyWith(latestVersion: latestVersion);
         } else {
@@ -114,63 +117,38 @@ class DependencyService {
   }
 
   Future<String> getLatestVersion(String packageName, bool isSdk) async {
+    // SDK versions are not fetched
     if (isSdk) {
-      if (packageName == 'Dart SDK') {
-        return await _getLatestDartSdkVersion();
-      } else if (packageName == 'Flutter SDK') {
-        return await _getLatestFlutterSdkVersion();
-      }
+      return 'N/A';
     }
 
     final cachedVersion = await _cacheService.getCachedVersion(packageName);
     if (cachedVersion != null) {
+      print('Using cached version for $packageName: $cachedVersion');
       return cachedVersion;
     }
 
     try {
-      final response = await http.get(
-        Uri.parse('https://pub.dev/api/packages/$packageName'),
-      );
+      print('Fetching latest version for $packageName from pub.dev...');
+      final response = await http
+          .get(
+            Uri.parse('https://pub.dev/api/packages/$packageName'),
+            headers: {'Accept': 'application/vnd.pub.v2+json'},
+          )
+          .timeout(const Duration(seconds: 15));
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final latestVersion = data['latest']['version'];
-        await _cacheService.cacheVersion(packageName, latestVersion);
-        return latestVersion;
+        final latest = data['latest'];
+        if (latest != null && latest['version'] != null) {
+          final latestVersion = latest['version'].toString();
+          await _cacheService.cacheVersion(packageName, latestVersion);
+          print('Fetched version for $packageName: $latestVersion');
+          return latestVersion;
+        }
       }
     } catch (e) {
       print('Error fetching latest version for $packageName: $e');
-    }
-    return 'Unknown';
-  }
-
-  Future<String> _getLatestDartSdkVersion() async {
-    try {
-      final response = await http.get(
-        Uri.parse('https://api.github.com/repos/dart-lang/sdk/releases/latest'),
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['tag_name'].replaceAll('v', '');
-      }
-    } catch (e) {
-      print('Error fetching latest Dart SDK version: $e');
-    }
-    return 'Unknown';
-  }
-
-  Future<String> _getLatestFlutterSdkVersion() async {
-    try {
-      final response = await http.get(
-        Uri.parse(
-          'https://api.github.com/repos/flutter/flutter/releases/latest',
-        ),
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['tag_name'].replaceAll('v', '');
-      }
-    } catch (e) {
-      print('Error fetching latest Flutter SDK version: $e');
     }
     return 'Unknown';
   }
@@ -188,16 +166,10 @@ class DependencyService {
       final content = await pubspecFile.readAsString();
       final editor = YamlEditor(content);
 
-      if (packageName == 'Dart SDK') {
-        final latestVersion = await _getLatestDartSdkVersion();
-        if (latestVersion != 'Unknown') {
-          editor.update(['environment', 'sdk'], '^$latestVersion');
-        }
-      } else if (packageName == 'Flutter SDK') {
-        final latestVersion = await _getLatestFlutterSdkVersion();
-        if (latestVersion != 'Unknown') {
-          editor.update(['dependencies', 'flutter', 'sdk'], 'flutter');
-        }
+      if (packageName == 'Dart SDK' || packageName == 'Flutter SDK') {
+        throw Exception(
+          'SDK versions cannot be upgraded through this interface. Please update your pubspec.yaml environment constraints manually.',
+        );
       } else {
         final currentValue = editor.parseAt([dependencyType, packageName]);
         if (_isVersionedDependency(currentValue.value)) {

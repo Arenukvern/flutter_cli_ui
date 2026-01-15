@@ -33,7 +33,13 @@ class Dependency {
 
   /// Checks if the dependency is outdated.
   bool get isOutdated {
-    if (!isVersioned || latestVersion == 'Unknown') return false;
+    if (!isVersioned ||
+        latestVersion == 'Unknown' ||
+        latestVersion.startsWith('Loading') ||
+        latestVersion.startsWith('flutter') ||
+        currentVersion.startsWith('Loading') ||
+        currentVersion.startsWith('flutter'))
+      return false;
     try {
       final current = VersionConstraint.parse(currentVersion);
       final latest = Version.parse(latestVersion);
