@@ -14,5 +14,6 @@
   "dart.flutterOutline": true,
   "IDX.aI.enableInlineCompletion": true,
   "IDX.aI.enableCodebaseIndexing": true,
-  "python.analysis.autoImportCompletions": true
+  "python.analysis.autoImportCompletions": true,
+  "markdown.validate.enabled": true
 }
