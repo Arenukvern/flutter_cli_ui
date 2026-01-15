@@ -7,3 +7,4 @@ All notable changes to this project will be documented in this file, categorized
 
 - fixed endless loading for sdk dart and flutter
 - fixed highlighting
+- updated to dart 3.10 and latest deps
