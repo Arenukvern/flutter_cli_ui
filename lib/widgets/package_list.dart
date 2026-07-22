@@ -33,7 +33,7 @@ class PackageList extends StatelessWidget {
                 onTap: () => onPackageSelected(package),
               );
             },
-            onReorder: onReorder,
+            onReorderItem: onReorder,
           )
         : const Center(child: Text('No Flutter packages found.')),
   );

@@ -264,6 +264,7 @@ class _DependencyManagerState extends State<DependencyManager> {
                   onReorder: (final oldIndex, newIndex) {
                     setState(() {
                       if (oldIndex < newIndex) {
+                        // ignore: parameter_assignments
                         newIndex -= 1;
                       }
                       final item = flutterPackages.removeAt(oldIndex);
