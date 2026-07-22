@@ -11,7 +11,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(final BuildContext context) => MaterialApp(
     title: 'Dependency Manager',
-    theme: ThemeData(primarySwatch: Colors.blue),
+    theme: ThemeData(brightness: Brightness.dark, primarySwatch: Colors.blue),
     home: const DependencyManager(),
   );
 }
