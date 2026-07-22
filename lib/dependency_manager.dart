@@ -152,7 +152,11 @@ class _DependencyManagerState extends State<DependencyManager> {
       );
       await fetchDependencies(_selectedPackage!);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Successfully upgraded $packageName')),
+        SnackBar(
+          showCloseIcon: true,
+          duration: const Duration(milliseconds: 450),
+          content: Text('Successfully upgraded $packageName'),
+        ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
