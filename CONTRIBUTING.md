@@ -70,4 +70,4 @@ Commit the updated `.all-contributorsrc` and `README.md` together. Use the small
 
 If you have any questions or need help, feel free to join our [Discord community](https://discord.gg/y54DpJwmAn).
 
-Thank you for your contribution! 🎈🏜️
+Thank you for your contribution! 🎈🌄
