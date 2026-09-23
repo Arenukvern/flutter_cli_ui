@@ -1,6 +1,7 @@
 [![Made with AI](https://img.shields.io/badge/Made%20with-AI-lightgrey?style=for-the-badge)](https://github.com/mefengl/made-by-ai)
 <a title="Discord" href="https://discord.com/invite/y54DpJwmAn" ><img src="https://img.shields.io/discord/696688204476055592.svg" /></a>
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg)](CODE_OF_CONDUCT.md)
+[![All Contributors](https://img.shields.io/github/all-contributors/Arenukvern/flutter_cli_ui?color=ee8449&style=flat-square)](https://github.com/Arenukvern/flutter_cli_ui#contributors-)
 
 # Flutter CLI UI
 
@@ -94,6 +95,31 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Terms and Conditions
 
 By using this software, you agree to our [Terms and Conditions](TERMS_AND_CONDITIONS.md).
+
+## ✨ Contributors
+
+Huge thanks to all contributors for making this project better!
+
+This roster is maintained with [all-contributors](https://allcontributors.org/).
+To add someone, update [`.all-contributorsrc`](.all-contributorsrc) and
+regenerate the README table, or use the all-contributors bot/CLI from a PR.
+More detail: [CONTRIBUTING.md](CONTRIBUTING.md#contributor-credit).
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<table>
+  <tbody>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Arenukvern"><img src="https://avatars.githubusercontent.com/u/15068151?v=4?s=100" width="100px;" alt="Anton Malofeev"/><br /><sub><b>Anton Malofeev</b></sub></a><br /><a href="https://github.com/Arenukvern/flutter_cli_ui/commits?author=Arenukvern" title="Code">💻</a> <a href="#maintenance-Arenukvern" title="Maintenance">🚧</a> <a href="https://github.com/Arenukvern/flutter_cli_ui/commits?author=Arenukvern" title="Documentation">📖</a></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
 
 ## Acknowledgments
 
