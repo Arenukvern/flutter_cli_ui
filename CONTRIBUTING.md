@@ -57,17 +57,31 @@ First off, thank you for considering contributing to Flutter CLI UI.
 
 Contributor credit is managed with [all-contributors](https://allcontributors.org/). The source of truth is [`.all-contributorsrc`](.all-contributorsrc), and the generated table is rendered in the README.
 
-To add a contributor from a PR:
+### Credit someone from a pull request (preferred)
+
+Comment on the issue or PR (maintainers or contributors can do this):
+
+```text
+@all-contributors please add @username for code, bug
+```
+
+Use one comment per person. Valid types include `code`, `doc`, `bug`, `maintenance`, `infra`, `security`, `userTesting`, `research`, and `tutorial` ([emoji key](https://allcontributors.org/docs/en/emoji-key)).
+
+The bot opens a follow-up PR that updates `.all-contributorsrc` and the README table. Merge that credit PR, then merge the original contribution when ready.
+
+Docs: [bot usage](https://allcontributors.org/docs/en/bot/usage) · [usage tips](https://allcontributors.org/docs/en/reference/usage-tips)
+
+### Optional: CLI
 
 ```bash
 npx all-contributors-cli add <github-login> code,doc
 npx all-contributors-cli generate
 ```
 
-Commit the updated `.all-contributorsrc` and `README.md` together. Use the smallest accurate contribution type set; non-code work such as docs, bug reports, security review, user testing, tutorials, research, infrastructure, and maintenance is welcome.
+Commit the updated `.all-contributorsrc` and `README.md` together.
 
 ## Questions?
 
 If you have any questions or need help, feel free to join our [Discord community](https://discord.gg/y54DpJwmAn).
 
-Thank you for your contribution! 🎈🌄
+Thank you for your contribution! 🎈🍃
