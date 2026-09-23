@@ -24,6 +24,16 @@
         "maintenance",
         "doc"
       ]
+    },
+    {
+      "login": "webbrain-one",
+      "name": "WebBrain",
+      "avatar_url": "https://avatars.githubusercontent.com/u/295484252?v=4",
+      "profile": "https://webbrain.one",
+      "contributions": [
+        "code",
+        "bug"
+      ]
     }
   ]
 }

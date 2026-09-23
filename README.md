@@ -112,6 +112,7 @@ More detail: [CONTRIBUTING.md](CONTRIBUTING.md#contributor-credit).
   <tbody>
     <tr>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/Arenukvern"><img src="https://avatars.githubusercontent.com/u/15068151?v=4?s=100" width="100px;" alt="Anton Malofeev"/><br /><sub><b>Anton Malofeev</b></sub></a><br /><a href="https://github.com/Arenukvern/flutter_cli_ui/commits?author=Arenukvern" title="Code">💻</a> <a href="#maintenance-Arenukvern" title="Maintenance">🚧</a> <a href="https://github.com/Arenukvern/flutter_cli_ui/commits?author=Arenukvern" title="Documentation">📖</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://webbrain.one"><img src="https://avatars.githubusercontent.com/u/295484252?v=4?s=100" width="100px;" alt="WebBrain"/><br /><sub><b>WebBrain</b></sub></a><br /><a href="https://github.com/Arenukvern/flutter_cli_ui/commits?author=webbrain-one" title="Code">💻</a> <a href="https://github.com/Arenukvern/flutter_cli_ui/issues?q=author%3Awebbrain-one" title="Bug reports">🐛</a></td>
     </tr>
   </tbody>
 </table>
