@@ -101,8 +101,14 @@ By using this software, you agree to our [Terms and Conditions](TERMS_AND_CONDIT
 Huge thanks to all contributors for making this project better!
 
 This roster is maintained with [all-contributors](https://allcontributors.org/).
-To add someone, update [`.all-contributorsrc`](.all-contributorsrc) and
-regenerate the README table, or use the all-contributors bot/CLI from a PR.
+To credit someone, comment on the issue or pull request:
+
+```text
+@all-contributors please add @username for code, bug
+```
+
+The bot opens a follow-up PR that updates [`.all-contributorsrc`](.all-contributorsrc) and this table.
+See [bot usage](https://allcontributors.org/docs/en/bot/usage) and [usage tips](https://allcontributors.org/docs/en/reference/usage-tips).
 More detail: [CONTRIBUTING.md](CONTRIBUTING.md#contributor-credit).
 
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->

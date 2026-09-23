@@ -1,0 +1,59 @@
+name: all-contributors
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check contributor credit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Validate all-contributors config and README markers
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          cfg = json.loads(Path(".all-contributorsrc").read_text())
+          assert cfg.get("projectName") == "flutter_cli_ui"
+          assert "README.md" in cfg.get("files", [])
+          readme = Path("README.md").read_text()
+          assert "ALL-CONTRIBUTORS-LIST:START" in readme
+          assert "ALL-CONTRIBUTORS-LIST:END" in readme
+          assert "@all-contributors please add" in readme
+          print("all-contributors config and README markers look good")
+          PY
+
+      - name: Check GitHub committers are credited
+        env:
+          PRIVATE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          output="$(npx --yes all-contributors-cli@6 check 2>&1 || true)"
+          printf '%s\n' "$output"
+          # The CLI prints missing names but exits 0; fail CI for uncredited humans.
+          missing="$(printf '%s\n' "$output" | awk '
+            /Missing contributors in \.all-contributorsrc:/ {flag=1; next}
+            flag && NF {
+              gsub(/^[ \t]+|[ \t]+$/, "", $0)
+              n=split($0, parts, /, */)
+              for (i=1;i<=n;i++) if (parts[i] != "") print parts[i]
+              flag=0
+            }
+          ' | grep -v '\[bot\]' || true)"
+          if [ -n "$missing" ]; then
+            echo "Uncredited committers (add via @all-contributors on the PR):"
+            printf '%s\n' "$missing"
+            exit 1
+          fi
