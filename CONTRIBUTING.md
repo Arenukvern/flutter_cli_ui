@@ -52,8 +52,22 @@ First off, thank you for considering contributing to Flutter CLI UI.
 5. Install dependencies: `flutter pub get`
 6. Run the project: `flutter run`
 
+
+## Contributor Credit
+
+Contributor credit is managed with [all-contributors](https://allcontributors.org/). The source of truth is [`.all-contributorsrc`](.all-contributorsrc), and the generated table is rendered in the README.
+
+To add a contributor from a PR:
+
+```bash
+npx all-contributors-cli add <github-login> code,doc
+npx all-contributors-cli generate
+```
+
+Commit the updated `.all-contributorsrc` and `README.md` together. Use the smallest accurate contribution type set; non-code work such as docs, bug reports, security review, user testing, tutorials, research, infrastructure, and maintenance is welcome.
+
 ## Questions?
 
 If you have any questions or need help, feel free to join our [Discord community](https://discord.gg/y54DpJwmAn).
 
-Thank you for your contribution! 🎈🌄
+Thank you for your contribution! 🎈🏜️

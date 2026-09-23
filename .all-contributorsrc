@@ -1,0 +1,29 @@
+{
+  "projectName": "flutter_cli_ui",
+  "projectOwner": "Arenukvern",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "commitType": "docs",
+  "commitConvention": "angular",
+  "contributorsPerLine": 7,
+  "linkToUsageDocs": true,
+  "skipCi": true,
+  "contributors": [
+    {
+      "login": "Arenukvern",
+      "name": "Anton Malofeev",
+      "avatar_url": "https://avatars.githubusercontent.com/u/15068151?v=4",
+      "profile": "https://github.com/Arenukvern",
+      "contributions": [
+        "code",
+        "maintenance",
+        "doc"
+      ]
+    }
+  ]
+}
